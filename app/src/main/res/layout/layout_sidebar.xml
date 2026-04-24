@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/layout_sidebar.xml -->
+<com.google.android.material.navigation.NavigationView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/navigationView"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:layout_gravity="end"
+    android:background="#FFFFFF">
+
+    <ScrollView
+        android:layout_height="match_parent"
+        android:layout_width="match_parent"
+        android:layout_gravity="center">
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:layout_alignParentTop="true">
+
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="60dp"
+                    app:cardElevation="4dp"
+                    app:strokeColor="#052E92"
+                    app:strokeWidth="2dp">
+
+                    <ImageView
+                        android:id="@+id/navProfileImage"
+                        android:layout_width="120dp"
+                        android:layout_height="120dp"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/user_icon" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Profile Picture Logo/Icon (Edit Trigger) -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/editProfilePicLogo"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="4dp"
+                    app:cardCornerRadius="18dp"
+                    app:cardElevation="6dp"
+                    app:cardBackgroundColor="#052E92">
+
+                    <ImageView
+                        android:id="@+id/editProfilePictureLogo"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="8dp"
+                        android:src="@android:drawable/ic_menu_camera"
+                        app:tint="#FFFFFF" />
+                </com.google.android.material.card.MaterialCardView>
+            </FrameLayout>
+
+            <!-- Profile Name -->
+            <TextView
+                android:id="@+id/profileName"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:gravity="center"
+                android:text="Full Name"
+                android:textColor="#1A1A1A"
+                android:textSize="22sp"
+                android:fontFamily="sans-serif-medium" />
+
+            <!-- User Info Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:orientation="vertical">
+
+                <!-- Helper function to create rows with icons -->
+                <!-- Role -->
+                <LinearLayout style="@style/SidebarInfoRow">
+
+                    <ImageView
+                        style="@style/SidebarIcon"
+                        android:src="@android:drawable/ic_menu_myplaces" />
+
+                    <LinearLayout style="@style/SidebarTextStack">
+
+                        <TextView
+                            style="@style/SidebarLabel"
+                            android:text="Role" />
+
+                        <TextView
+                            android:id="@+id/profileRole"
+                            style="@style/SidebarValue"
+                            android:text="Student" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout style="@style/SidebarInfoRow">
+
+                    <ImageView
+                        style="@style/SidebarIcon"
+                        android:src="@android:drawable/ic_dialog_email" />
+
+                    <LinearLayout style="@style/SidebarTextStack">
+
+                        <TextView
+                            style="@style/SidebarLabel"
+                            android:text="Email Address" />
+
+                        <TextView
+                            android:id="@+id/profileEmail"
+                            style="@style/SidebarValue"
+                            android:text="email@example.com" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout style="@style/SidebarInfoRow">
+
+                    <ImageView
+                        style="@style/SidebarIcon"
+                        android:src="@android:drawable/stat_sys_phone_call" />
+
+                    <LinearLayout style="@style/SidebarTextStack">
+
+                        <TextView
+                            style="@style/SidebarLabel"
+                            android:text="Phone Number" />
+
+                        <TextView
+                            android:id="@+id/profilePhone"
+                            style="@style/SidebarValue"
+                            android:text="+91 9876543210" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout style="@style/SidebarInfoRow">
+
+                    <ImageView
+                        style="@style/SidebarIcon"
+                        android:src="@android:drawable/ic_menu_directions" />
+
+                    <LinearLayout style="@style/SidebarTextStack">
+
+                        <TextView
+                            style="@style/SidebarLabel"
+                            android:text="Campus &amp; Department" />
+
+                        <TextView
+                            android:id="@+id/profileCampus"
+                            style="@style/SidebarValue"
+                            android:text="Main Campus" />
+
+                        <TextView
+                            android:id="@+id/profileDepartment"
+                            style="@style/SidebarValue"
+                            android:text="Computer Science"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout style="@style/SidebarInfoRow">
+
+                    <ImageView
+                        style="@style/SidebarIcon"
+                        android:src="@android:drawable/ic_menu_today" />
+
+                    <LinearLayout style="@style/SidebarTextStack">
+
+                        <TextView
+                            style="@style/SidebarLabel"
+                            android:text="Batch" />
+
+                        <TextView
+                            android:id="@+id/profileBatch"
+                            style="@style/SidebarValue"
+                            android:text="2021-2025" />
+                    </LinearLayout>
+                </LinearLayout>
+
+
+                <!-- Student Specific Section -->
+                <LinearLayout
+                    android:id="@+id/studentLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <View style="@style/SidebarDivider" />
+
+                    <!-- UID -->
+                    <LinearLayout style="@style/SidebarInfoRow">
+
+                        <ImageView
+                            style="@style/SidebarIcon"
+                            android:src="@android:drawable/ic_menu_info_details" />
+
+                        <LinearLayout style="@style/SidebarTextStack">
+
+                            <TextView
+                                style="@style/SidebarLabel"
+                                android:text="Student UID" />
+
+                            <TextView
+                                android:id="@+id/studentUid"
+                                style="@style/SidebarValue"
+                                android:text="21BCS101" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+
+                    <!-- Family Info -->
+                    <LinearLayout style="@style/SidebarInfoRow">
+
+                        <ImageView
+                            style="@style/SidebarIcon"
+                            android:src="@android:drawable/ic_menu_agenda" />
+
+                        <LinearLayout style="@style/SidebarTextStack">
+
+                            <TextView
+                                style="@style/SidebarLabel"
+                                android:text="Guardian Details" />
+
+                            <TextView
+                                android:id="@+id/fatherName"
+                                style="@style/SidebarValue"
+                                android:text="Father Name" />
+
+                            <TextView
+                                android:id="@+id/fatherPhone"
+                                style="@style/SidebarValue"
+                                android:text="Guardian Phone"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="25dp"
+                android:background="#EEEEEE" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/logoutButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_margin="24dp"
+            android:text="Logout"
+            android:textAllCaps="false"
+            android:textColor="#D32F2F"
+            app:icon="@android:drawable/ic_lock_power_off"
+            app:iconTint="#D32F2F" />
+    </RelativeLayout>
+    </ScrollView>
+</com.google.android.material.navigation.NavigationView>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="8dp"
+    android:background="#FFFFFF">
+
+    <!-- Title at the top -->
+
+    <TextView
+        android:id="@+id/notificationTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="New Digital Pass Update"
+        android:textColor="#052E92"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+
+
+    <!-- Profile Image (Manual circular look isn't easy in RemoteViews, usually square or rounded square) -->
+
+    <ImageView
+        android:id="@+id/notificationImage"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_below="@id/notificationTitle"
+        android:scaleType="centerCrop"
+        android:src="@drawable/user_icon" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/notificationImage"
+        android:layout_below="@id/notificationTitle"
+        android:layout_marginStart="12dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/notificationUserName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="User Name"
+            android:textColor="#333333"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/notificationDescriptionBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:maxLines="10"
+            android:text="Notification Body Description"
+            android:textColor="#666666"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+</RelativeLayout>
