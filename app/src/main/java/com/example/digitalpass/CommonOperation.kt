@@ -50,16 +50,16 @@ object CommonOperation {
             }
 
             //Digital Pass+campus
-            var spannableText=android.text.SpannableString("Digital Pass\n${loginUserData?.get("campus")}")
+            var spannableText=android.text.SpannableString("SISTec Digital Pass\n${loginUserData?.get("campus")}")
             spannableText.setSpan(
                 RelativeSizeSpan(1.2f),
-                0,12,
+                0,19,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
 
             spannableText.setSpan(
                 RelativeSizeSpan(0.8f),
-                12,spannableText.length,
+                19,spannableText.length,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
 

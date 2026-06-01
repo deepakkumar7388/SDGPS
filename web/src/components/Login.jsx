@@ -116,22 +116,22 @@ const Login = ({ onLoginSuccess }) => {
         <form onSubmit={handleSendCode}>
           <div className="input-group">
             <label className="input-label">Email Address</label>
-            <input 
-              type="email" 
-              className="input-control" 
-              placeholder="Enter registered email" 
+            <input
+              type="email"
+              className="input-control"
+              placeholder="Enter registered email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required 
+              required
             />
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>
             {loading ? <div className="spinner"></div> : 'Send Verification Code'}
           </button>
-          <button 
-            type="button" 
-            className="btn btn-outline" 
-            style={{ width: '100%', marginTop: '0.75rem' }} 
+          <button
+            type="button"
+            className="btn btn-outline"
+            style={{ width: '100%', marginTop: '0.75rem' }}
             onClick={() => { setForgotMode(null); setError(null); setSuccessMsg(null); }}
           >
             Back to Login
@@ -148,22 +148,22 @@ const Login = ({ onLoginSuccess }) => {
           </div>
           <div className="input-group">
             <label className="input-label">Verification Code</label>
-            <input 
-              type="text" 
-              className="input-control" 
-              placeholder="Enter 4-8 digit OTP code" 
+            <input
+              type="text"
+              className="input-control"
+              placeholder="Enter 4-8 digit OTP code"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
-              required 
+              required
             />
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>
             {loading ? <div className="spinner"></div> : 'Verify Code'}
           </button>
-          <button 
-            type="button" 
-            className="btn btn-outline" 
-            style={{ width: '100%', marginTop: '0.75rem' }} 
+          <button
+            type="button"
+            className="btn btn-outline"
+            style={{ width: '100%', marginTop: '0.75rem' }}
             onClick={() => { setForgotMode('email'); setError(null); setSuccessMsg(null); }}
           >
             Back / Resend Code
@@ -177,33 +177,33 @@ const Login = ({ onLoginSuccess }) => {
         <form onSubmit={handleResetPassword}>
           <div className="input-group">
             <label className="input-label">New Password</label>
-            <input 
-              type="password" 
-              className="input-control" 
-              placeholder="Enter new password" 
+            <input
+              type="password"
+              className="input-control"
+              placeholder="Enter new password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              required 
+              required
             />
           </div>
           <div className="input-group">
             <label className="input-label">Confirm New Password</label>
-            <input 
-              type="password" 
-              className="input-control" 
-              placeholder="Confirm new password" 
+            <input
+              type="password"
+              className="input-control"
+              placeholder="Confirm new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              required 
+              required
             />
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>
             {loading ? <div className="spinner"></div> : 'Reset Password'}
           </button>
-          <button 
-            type="button" 
-            className="btn btn-outline" 
-            style={{ width: '100%', marginTop: '0.75rem' }} 
+          <button
+            type="button"
+            className="btn btn-outline"
+            style={{ width: '100%', marginTop: '0.75rem' }}
             disabled={loading}
             onClick={() => { setForgotMode(null); setError(null); setSuccessMsg(null); }}
           >
@@ -218,7 +218,7 @@ const Login = ({ onLoginSuccess }) => {
     <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
       <div className="glass-panel" style={{ padding: '2.5rem', width: '100%', maxWidth: '400px' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ marginBottom: '0.5rem' }}>DigitalPass</h2>
+          <h2 style={{ marginBottom: '0.5rem' }}>SISTec Digital Pass</h2>
           <p style={{ color: 'var(--text-secondary)' }}>
             {forgotMode ? 'Reset password recovery' : 'Sign in to your account'}
           </p>
@@ -242,34 +242,34 @@ const Login = ({ onLoginSuccess }) => {
           <form onSubmit={handleLoginSubmit}>
             <div className="input-group">
               <label className="input-label">Email</label>
-              <input 
-                type="email" 
-                className="input-control" 
-                placeholder="Enter your email" 
+              <input
+                type="email"
+                className="input-control"
+                placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required 
+                required
               />
             </div>
-            
+
             <div className="input-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="input-label">Password</label>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '0.8rem', cursor: 'pointer', padding: 0 }}
                   onClick={() => { setForgotMode('email'); setError(null); setSuccessMsg(null); }}
                 >
                   Forgot Password?
                 </button>
               </div>
-              <input 
-                type="password" 
-                className="input-control" 
-                placeholder="Enter your password" 
+              <input
+                type="password"
+                className="input-control"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required 
+                required
               />
             </div>
 
