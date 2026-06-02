@@ -1,9 +1,13 @@
 package com.example.digitalpass
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.widget.SearchView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -27,6 +31,24 @@ class UserManagement : BaseActivity() {
       var memberList=ArrayList<HashMap<String,String>>()
 
     private var progressBar: CustomProgressBar?=null
+
+    private var activityResultFromUserView=registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ){result ->
+        if(result.resultCode==RESULT_OK){
+            var data=result.data
+            var position=memberList.indexOfFirst { it["email"]== data?.getStringExtra("previousEmail") }
+            if(position!=-1) {
+                if (data?.getStringExtra("userManagementOperation") == "remove") {
+                    memberList.removeAt(position)
+                } else {
+                    var updatedUser =data?.getSerializableExtra("userUpdatedData") as HashMap<String, String>
+                    memberList[position]=updatedUser
+                }
+                filterMembers()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,11 +84,17 @@ class UserManagement : BaseActivity() {
         membersRecyclerView = findViewById(R.id.recyclerViewUserManagement)
         membersRecyclerView.layoutManager = LinearLayoutManager(this)
 
-        adapter = UserManagementAdapter(ArrayList<HashMap<String,String>>())
+        adapter = UserManagementAdapter(ArrayList<HashMap<String,String>>()){ userItem->
+            var intent= Intent(this, UserManagementViewUser::class.java).apply{
+                putExtra("user",userItem)
+            }
+            activityResultFromUserView.launch(intent)
+        }
         membersRecyclerView.adapter = adapter
 
         setupSearchView()
         setupToggleGroup()
+        fetchAllUserData()
     }
 
 
@@ -133,8 +161,7 @@ class UserManagement : BaseActivity() {
     }
 
 
-    override fun onResume() {
-        super.onResume()
+    private fun fetchAllUserData(){
         //set filter by default all user
         roleToggleGroup.check(R.id.allUserButton)
 

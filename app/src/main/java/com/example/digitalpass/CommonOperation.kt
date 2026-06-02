@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.text.Spannable
 import android.text.style.RelativeSizeSpan
+import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -17,6 +18,7 @@ import androidx.exifinterface.media.ExifInterface
 import com.bumptech.glide.Glide
 import com.example.digitalpass.LoginUserDataHolder.loginUserData
 import com.example.digitalpass.LoginUserDataHolder.token
+import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -33,10 +35,26 @@ import java.io.File
 
 object CommonOperation {
 
+    val versionId="1"
     fun setupUserProfile(activity: Activity) {
 
         //we will do all this work with CoroutineScope
         CoroutineScope(Dispatchers.Main).launch {
+
+            //show app update if available
+            if(loginUserData?.get("versionId")!=versionId){
+                val updateLayout = activity.findViewById<View>(R.id.updateBanner)
+                updateLayout?.visibility = View.VISIBLE
+                
+                activity.findViewById<MaterialButton>(R.id.updateAppButton)?.setOnClickListener {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://yogeshsaini7172.github.io/digitalPassWeb"))
+                    activity.startActivity(intent)
+                }
+                
+                activity.findViewById<ImageView>(R.id.laterButton)?.setOnClickListener {
+                    updateLayout?.visibility = View.GONE
+                }
+            }
 
             if (LoginUserDataHolder.loginUserData?.get("img")?.trim() != "") {
                 var profileImage = activity.findViewById<ImageView>(R.id.ProfileImage)

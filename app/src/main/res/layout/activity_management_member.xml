@@ -17,13 +17,14 @@
             android:id="@+id/appBarLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/appbar_gradient_bg"
-            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
+            android:background="#00000000">
 
             <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
+                android:background="@drawable/appbar_gradient_bg"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
                 app:contentInsetStart="16dp"
                 app:contentInsetEnd="16dp">
 
@@ -68,25 +69,16 @@
 
             </com.google.android.material.appbar.MaterialToolbar>
 
-        </com.google.android.material.appbar.AppBarLayout>
-
-        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-            android:id="@+id/swipeRefreshLayout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            app:layout_behavior="@string/appbar_scrolling_view_behavior">
-
-        <androidx.core.widget.NestedScrollView
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:overScrollMode="never"
-            app:layout_behavior="@string/appbar_scrolling_view_behavior">
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingBottom="24dp">
+                android:paddingBottom="16dp">
+
+                <include
+                    android:id="@+id/updateBanner"
+                    layout="@layout/updateappview"
+                    android:visibility="gone" />
 
                 <!-- Quick Actions Header -->
                 <TextView
@@ -94,11 +86,11 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="24dp"
                     android:layout_marginTop="24dp"
+                    android:letterSpacing="0.02"
                     android:text="Quick Actions"
                     android:textColor="#1E293B"
                     android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.02" />
+                    android:textStyle="bold" />
 
                 <HorizontalScrollView
                     android:layout_width="match_parent"
@@ -130,12 +122,12 @@
                             android:textStyle="bold"
                             app:cornerRadius="16dp"
                             app:elevation="3dp"
-                            app:strokeWidth="1.5dp"
-                            app:strokeColor="#E2E8F0"
-                            app:rippleColor="#F1F5F9"
                             app:icon="@android:drawable/ic_input_add"
                             app:iconSize="20dp"
-                            app:iconTint="#3B82F6" />
+                            app:iconTint="#3B82F6"
+                            app:rippleColor="#F1F5F9"
+                            app:strokeColor="#E2E8F0"
+                            app:strokeWidth="1.5dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/batchesButton"
@@ -152,12 +144,12 @@
                             android:textStyle="bold"
                             app:cornerRadius="16dp"
                             app:elevation="3dp"
-                            app:strokeWidth="1.5dp"
-                            app:strokeColor="#E2E8F0"
-                            app:rippleColor="#F1F5F9"
                             app:icon="@android:drawable/ic_dialog_dialer"
                             app:iconSize="20dp"
-                            app:iconTint="#3B82F6" />
+                            app:iconTint="#3B82F6"
+                            app:rippleColor="#F1F5F9"
+                            app:strokeColor="#E2E8F0"
+                            app:strokeWidth="1.5dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/userManagementButton"
@@ -174,12 +166,12 @@
                             android:textStyle="bold"
                             app:cornerRadius="16dp"
                             app:elevation="3dp"
-                            app:strokeWidth="1.5dp"
-                            app:strokeColor="#E2E8F0"
-                            app:rippleColor="#F1F5F9"
                             app:icon="@drawable/usermanagementimg"
                             app:iconSize="20dp"
-                            app:iconTint="#3B82F6" />
+                            app:iconTint="#3B82F6"
+                            app:rippleColor="#F1F5F9"
+                            app:strokeColor="#E2E8F0"
+                            app:strokeWidth="1.5dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/allotmentButton"
@@ -197,9 +189,9 @@
                             android:visibility="gone"
                             app:cornerRadius="16dp"
                             app:elevation="3dp"
-                            app:strokeWidth="1.5dp"
+                            app:rippleColor="#F1F5F9"
                             app:strokeColor="#E2E8F0"
-                            app:rippleColor="#F1F5F9" />
+                            app:strokeWidth="1.5dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/applyGatePassButton"
@@ -216,12 +208,12 @@
                             android:textStyle="bold"
                             app:cornerRadius="16dp"
                             app:elevation="3dp"
-                            app:strokeWidth="1.5dp"
-                            app:strokeColor="#E2E8F0"
-                            app:rippleColor="#F1F5F9"
                             app:icon="@android:drawable/ic_menu_agenda"
                             app:iconSize="20dp"
-                            app:iconTint="#3B82F6" />
+                            app:iconTint="#3B82F6"
+                            app:rippleColor="#F1F5F9"
+                            app:strokeColor="#E2E8F0"
+                            app:strokeWidth="1.5dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/editCampusButton"
@@ -239,9 +231,9 @@
                             android:visibility="gone"
                             app:cornerRadius="16dp"
                             app:elevation="3dp"
-                            app:strokeWidth="1.5dp"
+                            app:rippleColor="#F1F5F9"
                             app:strokeColor="#E2E8F0"
-                            app:rippleColor="#F1F5F9" />
+                            app:strokeWidth="1.5dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/historyButton"
@@ -258,12 +250,12 @@
                             android:textStyle="bold"
                             app:cornerRadius="16dp"
                             app:elevation="3dp"
-                            app:strokeWidth="1.5dp"
-                            app:strokeColor="#E2E8F0"
-                            app:rippleColor="#F1F5F9"
                             app:icon="@drawable/historyimg"
                             app:iconSize="20dp"
-                            app:iconTint="#3B82F6" />
+                            app:iconTint="#3B82F6"
+                            app:rippleColor="#F1F5F9"
+                            app:strokeColor="#E2E8F0"
+                            app:strokeWidth="1.5dp" />
 
                     </LinearLayout>
                 </HorizontalScrollView>
@@ -274,11 +266,11 @@
                     android:layout_marginStart="16dp"
                     android:layout_marginTop="8dp"
                     android:layout_marginEnd="16dp"
+                    app:cardBackgroundColor="#FFFFFF"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="2dp"
                     app:strokeColor="#E2E8F0"
-                    app:strokeWidth="1dp"
-                    app:cardBackgroundColor="#FFFFFF">
+                    app:strokeWidth="1dp">
 
                     <SearchView
                         android:id="@+id/userManagementSearch"
@@ -311,8 +303,8 @@
                         android:textSize="16sp"
                         android:textStyle="bold"
                         app:cornerRadius="16dp"
-                        app:strokeColor="#3B82F6"
-                        app:rippleColor="#E0F2FE" />
+                        app:rippleColor="#E0F2FE"
+                        app:strokeColor="#3B82F6" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/gatePassListButton"
@@ -325,25 +317,33 @@
                         android:textSize="16sp"
                         android:textStyle="bold"
                         app:cornerRadius="16dp"
-                        app:strokeColor="#3B82F6"
-                        app:rippleColor="#E0F2FE" />
+                        app:rippleColor="#E0F2FE"
+                        app:strokeColor="#3B82F6" />
 
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/recyclerView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:clipToPadding="false"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                    tools:listitem="@layout/historyitem" />
-
             </LinearLayout>
-        </androidx.core.widget.NestedScrollView>
+
+        </com.google.android.material.appbar.AppBarLayout>
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipeRefreshLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="16dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/historyitem" />
 
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 

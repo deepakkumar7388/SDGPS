@@ -37,13 +37,10 @@ object LoginUserDataHolder {
     // All loginUserData keys we want to persist:
     private val USER_DATA_KEYS = listOf(
         "name", "email", "phone", "role", "campus", "department",
-        "batch", "img", "uid", "fathername", "fatherphone"
+        "batch", "img", "uid", "fathername", "fatherphone", "versionId"
     )
 
-    /**
-     * Call this right after a successful login or token-refresh so that
-     * all critical state is persisted to SharedPreferences.
-     */
+
     fun saveState(context: Context) {
         val prefs: SharedPreferences =
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -202,10 +199,13 @@ object LoginUserDataHolder {
 
                     CoroutineScope(Dispatchers.Main).launch {
                         if (operation == "insert") {
-                            visitorList.add(0, updatedVisitor)
-                            val nameStr = updatedVisitor["name"] ?: ""
-                            if (listType == "visitor" && nameStr.contains(searchQuery, ignoreCase = true)) {
-                                visitorListAdapter?.insertItem(updatedVisitor)
+                            val position = visitorList.indexOfFirst { it["visitorId"] == updatedVisitor["visitorId"] }
+                            if (position == -1) {
+                                visitorList.add(0, updatedVisitor)
+                                val nameStr = updatedVisitor["name"] ?: ""
+                                if (listType == "visitor" && nameStr.contains(searchQuery, ignoreCase = true)) {
+                                    visitorListAdapter?.insertItem(updatedVisitor)
+                                }
                             }
                         } else {
                             val position = visitorList.indexOfFirst { it["visitorId"] == updatedVisitor["visitorId"] }
@@ -296,12 +296,15 @@ object LoginUserDataHolder {
             ) {
                 if(response.isSuccessful){
                     val newGatePass = response.body() ?: return
-                    gatePassList.add(0, newGatePass)
+                    val position = gatePassList.indexOfFirst { it["gatePassId"] == newGatePass["gatePassId"] }
+                    if (position == -1) {
+                        gatePassList.add(0, newGatePass)
 
-                    //before inserting this new gatePass in adapter we have to check for searchQuery
-                    val nameStr = newGatePass["name"] ?: ""
-                    if(listType=="gatePass" && nameStr.contains(searchQuery, ignoreCase = true)){
-                        gatePassListAdapter?.insertItem(newGatePass)
+                        //before inserting this new gatePass in adapter we have to check for searchQuery
+                        val nameStr = newGatePass["name"] ?: ""
+                        if(listType=="gatePass" && nameStr.contains(searchQuery, ignoreCase = true)){
+                            gatePassListAdapter?.insertItem(newGatePass)
+                        }
                     }
                 }
             }

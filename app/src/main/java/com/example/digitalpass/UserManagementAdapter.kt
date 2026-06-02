@@ -9,7 +9,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 
-class UserManagementAdapter(var members: ArrayList<HashMap<String,String>>) : RecyclerView.Adapter<UserManagementAdapter.MemberViewHolder>() {
+class UserManagementAdapter(var members: ArrayList<HashMap<String,String>>,var userItemClick:(HashMap<String,String>)->Unit) : RecyclerView.Adapter<UserManagementAdapter.MemberViewHolder>() {
 
     class MemberViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         var image=itemView.findViewById<ImageView>(R.id.memberImage)
@@ -33,10 +33,9 @@ class UserManagementAdapter(var members: ArrayList<HashMap<String,String>>) : Re
         }
         holder.memberName.text = members[position]["name"]
         holder.memberDepartment.text = members[position]["department"]
+
         holder.itemLayout.setOnClickListener {
-            val intent = Intent(holder.itemView.context, UserManagementViewUser::class.java)
-            intent.putExtra("user", members[position])
-            holder.itemView.context.startActivity(intent)
+            userItemClick(members[position])
         }
     }
 

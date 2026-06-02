@@ -50,7 +50,6 @@ class EnterVisitor : BaseActivity() {
     lateinit var editButton: ImageView
     lateinit var name: EditText
     lateinit var phone: EditText
-    lateinit var email: EditText
     lateinit var numberOfVisitor: EditText
     lateinit var reason: EditText
     lateinit var departmentSpinner: Spinner
@@ -120,7 +119,6 @@ class EnterVisitor : BaseActivity() {
         editButton=findViewById(R.id.editButtonBySecurity)
         name=findViewById(R.id.visitorName)
         phone=findViewById(R.id.visitorPhone)
-        email=findViewById(R.id.visitorEmail)
         numberOfVisitor=findViewById(R.id.visitorNumber)
         reason=findViewById(R.id.visitorReason)
         departmentSpinner=findViewById(R.id.departmentSpinner)
@@ -333,7 +331,6 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
             if(multipartImage==null||
                 name.text.toString()==""||
                 phone.text.toString()==""||
-                email.text.toString()==""||
                 numberOfVisitor.text.toString()==""||
                 reason.text.toString()==""||
                 selectedMember==null){
@@ -345,7 +342,6 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
             var visitor=hashMapOf(
                 "name" to name.text.toString(),
                 "phone" to phone.text.toString(),
-                "visitorEmail" to email.text.toString(),
                 "numberOfVisitor" to numberOfVisitor.text.toString(),
                 "reason" to reason.text.toString(),
                 "meetDepartment" to selectedMember!!["department"]!!,
@@ -396,7 +392,6 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
         if(visitorData?.get("img") !="") Glide.with(this).load(LoginUserDataHolder.getURL(visitorData?.get("img"))).into(image)
         name.setText(visitorData?.get("name"))
         phone.setText(visitorData?.get("phone"))
-        email.setText(visitorData?.get("visitorEmail"))
         numberOfVisitor.setText(visitorData?.get("numberOfVisitor"))
         reason.setText(visitorData?.get("reason"))
 
@@ -436,7 +431,6 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
         image.isEnabled=viewType
         name.isEnabled=viewType
         phone.isEnabled=viewType
-        email.isEnabled=viewType
         numberOfVisitor.isEnabled=viewType
         reason.isEnabled=viewType
     }
@@ -469,7 +463,6 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
 
             if(name.text.toString()==""||
                 phone.text.toString()==""||
-                email.text.toString()==""||
                 numberOfVisitor.text.toString()==""||
                 reason.text.toString()==""||
                 selectedMember==null){
@@ -482,7 +475,6 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
 
             if(name.text.toString()!=visitorData!!["name"])changedVisitorHashMap["name"]=name.text.toString()
             if(phone.text.toString()!=visitorData!!["phone"])changedVisitorHashMap["phone"]=phone.text.toString()
-            if(email.text.toString()!=visitorData!!["visitorEmail"])changedVisitorHashMap["visitorEmail"]=email.text.toString()
             if(numberOfVisitor.text.toString()!=visitorData!!["numberOfVisitor"])changedVisitorHashMap["numberOfVisitor"]=numberOfVisitor.text.toString()
             if(reason.text.toString()!=visitorData!!["reason"])changedVisitorHashMap["reason"]=reason.text.toString()
             if(selectedMember!!["email"]!=visitorData!!["meetEmail"])changedVisitorHashMap["meetEmail"]=selectedMember!!["email"]!!

@@ -7,85 +7,78 @@
     android:layout_height="match_parent"
     tools:context=".Student">
 
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipeRefreshLayout"
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:id="@+id/main"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="#F8FAFC">
 
-        <androidx.coordinatorlayout.widget.CoordinatorLayout
-            android:id="@+id/main"
+        <com.google.android.material.appbar.AppBarLayout
+            android:id="@+id/appBarLayout"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="#F8FAFC">
+            android:layout_height="wrap_content"
+            android:background="#00000000">
 
-            <com.google.android.material.appbar.AppBarLayout
-                android:id="@+id/appBarLayout"
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="@drawable/appbar_gradient_bg"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+                app:contentInsetStart="16dp"
+                app:contentInsetEnd="16dp">
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <TextView
+                        android:id="@+id/toolbarTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:text="Digital Pass"
+                        android:textColor="#FFFFFF"
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/profileCard"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        app:cardCornerRadius="20dp"
+                        app:cardElevation="2dp"
+                        app:strokeColor="#4DFFFFFF"
+                        app:strokeWidth="1dp">
+
+                        <ImageView
+                            android:id="@+id/ProfileImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/user_icon" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                </RelativeLayout>
+
+            </com.google.android.material.appbar.MaterialToolbar>
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/appbar_gradient_bg"
-                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
+                android:orientation="vertical"
+                android:paddingBottom="16dp">
 
-                <com.google.android.material.appbar.MaterialToolbar
-                    android:id="@+id/toolbar"
-                    android:layout_width="match_parent"
-                    android:layout_height="?attr/actionBarSize"
-                    app:contentInsetStart="16dp"
-                    app:contentInsetEnd="16dp">
-
-                    <RelativeLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent">
-
-                        <TextView
-                            android:id="@+id/toolbarTitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_alignParentStart="true"
-                            android:layout_centerVertical="true"
-                            android:text="Digital Pass"
-                            android:textColor="#FFFFFF"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:id="@+id/profileCard"
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:layout_alignParentEnd="true"
-                            android:layout_centerVertical="true"
-                            app:cardCornerRadius="20dp"
-                            app:cardElevation="2dp"
-                            app:strokeColor="#4DFFFFFF"
-                            app:strokeWidth="1dp">
-
-                            <ImageView
-                                android:id="@+id/ProfileImage"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:clickable="true"
-                                android:focusable="true"
-                                android:foreground="?attr/selectableItemBackground"
-                                android:scaleType="centerCrop"
-                                android:src="@drawable/user_icon" />
-                        </com.google.android.material.card.MaterialCardView>
-
-                    </RelativeLayout>
-
-                </com.google.android.material.appbar.MaterialToolbar>
-
-            </com.google.android.material.appbar.AppBarLayout>
-
-            <androidx.core.widget.NestedScrollView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:overScrollMode="never"
-                app:layout_behavior="@string/appbar_scrolling_view_behavior">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingBottom="32dp">
+                <include
+                    android:id="@+id/updateBanner"
+                    layout="@layout/updateappview"
+                    android:visibility="gone" />
 
                     <!-- Actions Header -->
                     <TextView
@@ -141,19 +134,28 @@
                         android:textStyle="bold"
                         android:letterSpacing="0.02" />
 
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/studentRecyclerView"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:clipToPadding="false"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                        tools:listitem="@layout/historyitem" />
+            </LinearLayout>
+        </com.google.android.material.appbar.AppBarLayout>
 
-                </LinearLayout>
-            </androidx.core.widget.NestedScrollView>
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipeRefreshLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/studentRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="16dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/historyitem" />
+
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
             <com.example.digitalpass.CustomProgressBar
                 android:id="@+id/customProgressBar"
@@ -172,7 +174,6 @@
                 android:clickable="true"
                 android:focusable="true">
 
-                <!-- Ambient glowing background blobs -->
                 <View
                     android:id="@+id/successBlob"
                     android:layout_width="300dp"
@@ -183,7 +184,6 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
 
-                <!-- Glow Ring -->
                 <View
                     android:id="@+id/glowRing"
                     android:layout_width="160dp"
@@ -195,7 +195,6 @@
                     app:layout_constraintTop_toTopOf="parent"
                     android:layout_marginBottom="80dp" />
 
-                <!-- Circular background for checkmark -->
                 <View
                     android:id="@+id/successCircle"
                     android:layout_width="120dp"
@@ -206,7 +205,6 @@
                     app:layout_constraintStart_toStartOf="@id/glowRing"
                     app:layout_constraintTop_toTopOf="@id/glowRing" />
 
-                <!-- Checkmark Image -->
                 <ImageView
                     android:id="@+id/successCheckmark"
                     android:layout_width="64dp"
@@ -217,7 +215,6 @@
                     app:layout_constraintStart_toStartOf="@id/successCircle"
                     app:layout_constraintTop_toTopOf="@id/successCircle" />
 
-                <!-- Confetti particles (small colored views) -->
                 <View android:id="@+id/confetti1" android:layout_width="12dp" android:layout_height="12dp" android:background="@drawable/confetti_p1" android:visibility="invisible" app:layout_constraintBottom_toBottomOf="@id/successCircle" app:layout_constraintEnd_toEndOf="@id/successCircle" app:layout_constraintStart_toStartOf="@id/successCircle" app:layout_constraintTop_toTopOf="@id/successCircle" />
                 <View android:id="@+id/confetti2" android:layout_width="16dp" android:layout_height="8dp" android:background="@drawable/confetti_p2" android:visibility="invisible" app:layout_constraintBottom_toBottomOf="@id/successCircle" app:layout_constraintEnd_toEndOf="@id/successCircle" app:layout_constraintStart_toStartOf="@id/successCircle" app:layout_constraintTop_toTopOf="@id/successCircle" />
                 <View android:id="@+id/confetti3" android:layout_width="10dp" android:layout_height="10dp" android:background="@drawable/confetti_p3" android:visibility="invisible" app:layout_constraintBottom_toBottomOf="@id/successCircle" app:layout_constraintEnd_toEndOf="@id/successCircle" app:layout_constraintStart_toStartOf="@id/successCircle" app:layout_constraintTop_toTopOf="@id/successCircle" />
@@ -225,7 +222,6 @@
                 <View android:id="@+id/confetti5" android:layout_width="8dp" android:layout_height="16dp" android:background="@drawable/confetti_p5" android:visibility="invisible" app:layout_constraintBottom_toBottomOf="@id/successCircle" app:layout_constraintEnd_toEndOf="@id/successCircle" app:layout_constraintStart_toStartOf="@id/successCircle" app:layout_constraintTop_toTopOf="@id/successCircle" />
                 <View android:id="@+id/confetti6" android:layout_width="12dp" android:layout_height="12dp" android:background="@drawable/confetti_p6" android:visibility="invisible" app:layout_constraintBottom_toBottomOf="@id/successCircle" app:layout_constraintEnd_toEndOf="@id/successCircle" app:layout_constraintStart_toStartOf="@id/successCircle" app:layout_constraintTop_toTopOf="@id/successCircle" />
 
-                <!-- Success text elements -->
                 <TextView
                     android:id="@+id/successTitle"
                     android:layout_width="wrap_content"
@@ -257,9 +253,6 @@
 
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-    <!-- Navigation Drawer (Side Bar) -->
     <include layout="@layout/layout_sidebar" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

@@ -1,5 +1,6 @@
 package com.example.digitalpass
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -355,6 +356,12 @@ class UserManagementViewUser : BaseActivity() {
                     progressBar?.stopAnimation()
                     if (response.isSuccessful) {
                         Toast.makeText(this@UserManagementViewUser, "User removed successfully", Toast.LENGTH_SHORT).show()
+
+                        var resultIntent=Intent().apply{
+                            putExtra("userManagementOperation","remove")
+                            putExtra("previousEmail",user["email"])
+                        }
+                        setResult(RESULT_OK,resultIntent)
                         finish()
                     }
                     else{
@@ -405,6 +412,7 @@ class UserManagementViewUser : BaseActivity() {
             "role" to roleSpinner.selectedItem.toString(),
             "token" to LoginUserDataHolder.token
         )
+
         if(roleSpinner.selectedItem.toString().equals("student",ignoreCase = true)) {
             newUser.put("uid",uid.text.toString())
             newUser.put("fathername",fatherName.text.toString())
@@ -422,6 +430,26 @@ class UserManagementViewUser : BaseActivity() {
                     if (response.isSuccessful) {
                         runOnUiThread {
                             Toast.makeText(this@UserManagementViewUser, "User edited successfully", Toast.LENGTH_SHORT).show()
+
+                            //put new updated data in user
+                            var previousEmail=user["email"]
+
+                            user["name"]=name.text.toString()
+                            user["email"]=email.text.toString()
+                            user["phone"]=phone.text.toString()
+                            user["department"]=departmentSpinner.selectedItem.toString()
+                            user["role"]=roleSpinner.selectedItem.toString()
+
+                            user["uid"]=uid.text.toString()
+                            user["fathername"]=fatherName.text.toString()
+                            user["fatherphone"]=fatherPhone.text.toString()
+                            user["batch"]=batchSpinner.selectedItem.toString()
+                            var resultIntent=Intent().apply{
+                                putExtra("userManagementOperation","edit")
+                                putExtra("previousEmail",previousEmail)
+                                putExtra("userUpdatedData",user)
+                            }
+                            setResult(RESULT_OK,resultIntent)
                             finish() // Close activity on success
                         }
                     } else {
