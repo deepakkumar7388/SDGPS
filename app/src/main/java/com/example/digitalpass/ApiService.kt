@@ -65,6 +65,13 @@ interface ApiService {
         @Part("token") token: RequestBody
     ): Call<ResponseBody>
 
+    @Multipart
+    @POST("/upload-apk-file")
+    fun uploadApkFile(
+        @Part file: MultipartBody.Part,
+        @Part("token") token: RequestBody
+    ): Call<ResponseBody>
+
     @POST("/get-campus-for-allotment")
     fun getCampusForAllotment(@Body token: String): Call<ArrayList<String>>
 

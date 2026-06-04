@@ -35,20 +35,65 @@ import java.io.File
 
 object CommonOperation {
 
-    val versionId="1"
+    val versionId="4"
     fun setupUserProfile(activity: Activity) {
 
         //we will do all this work with CoroutineScope
         CoroutineScope(Dispatchers.Main).launch {
 
             //show app update if available
-            if(loginUserData?.get("versionId")!=versionId){
+            val serverVersion = loginUserData?.get("versionId")
+            if(serverVersion != versionId){
                 val updateLayout = activity.findViewById<View>(R.id.updateBanner)
                 updateLayout?.visibility = View.VISIBLE
                 
                 activity.findViewById<MaterialButton>(R.id.updateAppButton)?.setOnClickListener {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://yogeshsaini7172.github.io/digitalPassWeb"))
-                    activity.startActivity(intent)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        if (!activity.packageManager.canRequestPackageInstalls()) {
+                            val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                            intent.data = Uri.parse("package:" + activity.packageName)
+                            activity.startActivity(intent)
+                            Toast.makeText(activity, "Please allow 'Install Unknown Apps' and click Update again.", Toast.LENGTH_LONG).show()
+                            return@setOnClickListener
+                        }
+                    }
+                    
+                    val url = loginUserData?.get("downloadUrl")?.toString() ?: "https://github.com/yogeshsaini7172/sistecDigitalPassRelease/releases/latest/download/app-release.apk"
+                    val request = android.app.DownloadManager.Request(Uri.parse(url))
+                        .setTitle("Digital Pass Update")
+                        .setDescription("Downloading new version...")
+                        .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "DigitalPass-update.apk")
+                        .setMimeType("application/vnd.android.package-archive")
+
+                    val downloadManager = activity.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                    val downloadId = downloadManager.enqueue(request)
+                    
+                    // Register broadcast receiver to auto install when done
+                    val onComplete = object : android.content.BroadcastReceiver() {
+                        override fun onReceive(context: Context?, intent: Intent?) {
+                            val id = intent?.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                            if (id == downloadId) {
+                                val uri = downloadManager.getUriForDownloadedFile(downloadId)
+                                if (uri != null && context != null) {
+                                    val installIntent = Intent(Intent.ACTION_VIEW)
+                                    installIntent.setDataAndType(uri, "application/vnd.android.package-archive")
+                                    installIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                    context.startActivity(installIntent)
+                                }
+                                try {
+                                    context?.unregisterReceiver(this)
+                                } catch (e: Exception) {}
+                            }
+                        }
+                    }
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        activity.registerReceiver(onComplete, android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
+                    } else {
+                        activity.registerReceiver(onComplete, android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+                    }
+                    
+                    Toast.makeText(activity, "Download starting...", Toast.LENGTH_LONG).show()
                 }
                 
                 activity.findViewById<ImageView>(R.id.laterButton)?.setOnClickListener {

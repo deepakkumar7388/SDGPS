@@ -21,9 +21,12 @@ import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import com.example.digitalpass.database.AppDatabase
+import com.example.digitalpass.database.UserEntity
 
 class UserManagement : BaseActivity() {
 
+    private lateinit var database: AppDatabase
     lateinit var searchView: SearchView
      lateinit var roleToggleGroup: MaterialButtonToggleGroup
      lateinit var membersRecyclerView: RecyclerView
@@ -37,13 +40,26 @@ class UserManagement : BaseActivity() {
     ){result ->
         if(result.resultCode==RESULT_OK){
             var data=result.data
-            var position=memberList.indexOfFirst { it["email"]== data?.getStringExtra("previousEmail") }
+            var previousEmail = data?.getStringExtra("previousEmail")
+            var position=memberList.indexOfFirst { it["email"]== previousEmail }
             if(position!=-1) {
                 if (data?.getStringExtra("userManagementOperation") == "remove") {
                     memberList.removeAt(position)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        previousEmail?.let { database.userDao().deleteUserByEmail(it) }
+                    }
                 } else {
                     var updatedUser =data?.getSerializableExtra("userUpdatedData") as HashMap<String, String>
                     memberList[position]=updatedUser
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val newEmail = updatedUser["email"] ?: ""
+                        if (newEmail.isNotEmpty()) {
+                            if (previousEmail != null && previousEmail != newEmail) {
+                                database.userDao().deleteUserByEmail(previousEmail)
+                            }
+                            database.userDao().insertUser(UserEntity(newEmail, updatedUser))
+                        }
+                    }
                 }
                 filterMembers()
             }
@@ -74,8 +90,21 @@ class UserManagement : BaseActivity() {
             insets
         }
 
-        findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar).setNavigationOnClickListener {
+        database = AppDatabase.getDatabase(this)
+
+        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+        toolbar.setNavigationOnClickListener {
             finish()
+        }
+        toolbar.inflateMenu(R.menu.menu_user_management)
+        toolbar.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.action_sync -> {
+                    fetchUsersFromServer()
+                    true
+                }
+                else -> false
+            }
         }
 
         progressBar=findViewById(R.id.customProgressBar)
@@ -167,32 +196,60 @@ class UserManagement : BaseActivity() {
 
         progressBar?.startProgressBar()
         CoroutineScope(Dispatchers.IO).launch {
-            var callToGetMember = RetrofitClient.instance.getMembersForUserManagement(LoginUserDataHolder.token)
-            callToGetMember.enqueue(object : Callback<ArrayList<HashMap<String,String>>> {
-                override fun onResponse(
-                    call: Call<ArrayList<HashMap<String,String>>?>,
-                    response: Response<ArrayList<HashMap<String,String>>?>
-                ) {
-                    if (response.isSuccessful) {
-                        memberList=response.body()!!
-                        adapter.updateList(memberList)
-                    } else {
-                        var errorMessage= LoginUserDataHolder.getErrorMessage(response)
-                        Toast.makeText(this@UserManagement, errorMessage, Toast.LENGTH_SHORT).show()
-                    }
+            val localUsers = database.userDao().getAllUsers()
+            if (localUsers.isNotEmpty()) {
+                memberList = ArrayList(localUsers.map { it.userData })
+                runOnUiThread {
+                    adapter.updateList(memberList)
                     progressBar?.stopAnimation()
                 }
+            } else {
+                fetchUsersFromServer()
+            }
+        }
+    }
 
-                override fun onFailure(
-                    call: Call<ArrayList<HashMap<String,String>>?>,
-                    t: Throwable
-                ) {
+    private fun fetchUsersFromServer() {
+        runOnUiThread { progressBar?.startProgressBar() }
+        var callToGetMember = RetrofitClient.instance.getMembersForUserManagement(LoginUserDataHolder.token)
+        callToGetMember.enqueue(object : Callback<ArrayList<HashMap<String,String>>> {
+            override fun onResponse(
+                call: Call<ArrayList<HashMap<String,String>>?>,
+                response: Response<ArrayList<HashMap<String,String>>?>
+            ) {
+                if (response.isSuccessful) {
+                    val fetchedUsers = response.body()!!
+                    CoroutineScope(Dispatchers.IO).launch {
+                        database.userDao().deleteAllUsers()
+                        val entities = fetchedUsers.map { UserEntity(it["email"] ?: "", it) }.filter { it.email.isNotEmpty() }
+                        database.userDao().insertAll(entities)
+                        memberList = ArrayList(entities.map { it.userData })
+                        runOnUiThread {
+                            adapter.updateList(memberList)
+                            filterMembers()
+                            progressBar?.stopAnimation()
+                        }
+                    }
+                } else {
+                    var errorMessage= LoginUserDataHolder.getErrorMessage(response)
+                    runOnUiThread {
+                        Toast.makeText(this@UserManagement, errorMessage, Toast.LENGTH_SHORT).show()
+                        progressBar?.stopAnimation()
+                    }
+                }
+            }
+
+            override fun onFailure(
+                call: Call<ArrayList<HashMap<String,String>>?>,
+                t: Throwable
+            ) {
+                runOnUiThread {
                     progressBar?.stopAnimation()
                     Toast.makeText(this@UserManagement, "Error", Toast.LENGTH_SHORT).show()
                 }
+            }
 
-            })
-        }
+        })
     }
 
 

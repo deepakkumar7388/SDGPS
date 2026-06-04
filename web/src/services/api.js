@@ -472,3 +472,20 @@ export const uploadProfileImage = async (file, token) => {
   }
   return response.json();
 };
+
+export const uploadApkFile = async (file, token, message) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('token', token);
+  formData.append('message', message);
+
+  const response = await fetch(`${BASE_URL}/upload-apk-file`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(errText || 'Failed to upload APK file');
+  }
+  return response.json();
+};

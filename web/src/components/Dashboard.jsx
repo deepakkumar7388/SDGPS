@@ -10,6 +10,7 @@ import SecurityGuardAllotment from './SecurityGuardAllotment';
 import MyGatePass from './MyGatePass';
 import EnterVisitorModal from './EnterVisitorModal';
 import CampusLocation from './CampusLocation';
+import AppUpdate from './AppUpdate';
 
 // Helper: checks if applyDate is today (so actions are enabled)
 const isToday = (dateStr) => {
@@ -1203,6 +1204,8 @@ const Dashboard = ({ onLogout }) => {
             setEditVisitorData={setEditVisitorData}
           />
         );
+      case 'AppUpdate':
+        return <AppUpdate />;
     }
   };
 
@@ -1310,6 +1313,20 @@ const Dashboard = ({ onLogout }) => {
                 <circle cx="12" cy="10" r="3" />
               </svg>
               <span>Campus Location</span>
+            </button>
+          )}
+
+          {/* App Update Setup — admin only */}
+          {userRole.toLowerCase() === 'admin' && (
+            <button
+              onClick={() => handleViewChange('AppUpdate')}
+              className="btn btn-outline"
+              title="App Update"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', background: activeView === 'AppUpdate' ? 'var(--surface-hover)' : 'transparent', border: activeView === 'AppUpdate' ? '1px solid var(--glass-border)' : 'none' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v20M17 5l-5-3-5 3M19 22H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2z" />
+              </svg>
+              <span>App Update</span>
             </button>
           )}
 

@@ -45,6 +45,7 @@ import java.io.InputStream
 class ManagementMember : BaseActivity() {
 
     private lateinit var excelPickerLauncher: ActivityResultLauncher<Intent>
+    private lateinit var apkPickerLauncher: ActivityResultLauncher<Intent>
     private lateinit var galleryLauncher: ActivityResultLauncher<String>
     private lateinit var profileImage: ImageView
     private lateinit var recyclerView: RecyclerView
@@ -111,6 +112,17 @@ class ManagementMember : BaseActivity() {
             }
         }
 
+        // Initialize APK file picker launcher
+        apkPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val selectedFileUri: Uri? = result.data?.data
+                if (selectedFileUri != null) {
+                    progressBar.startProgressBar()
+                    uploadApk(selectedFileUri)
+                }
+            }
+        }
+
         //profile data setup
          profileImage = findViewById(R.id.ProfileImage)
 
@@ -148,11 +160,19 @@ class ManagementMember : BaseActivity() {
 
         //edit campus
         val editCampusButton = findViewById<MaterialButton>(R.id.editCampusButton)
+        var uploadAPKButton=findViewById<MaterialButton>(R.id.uploadAPKButton)
         if (LoginUserDataHolder.loginUserData?.get("role") == "admin") {
             editCampusButton.visibility = View.VISIBLE
+            uploadAPKButton.visibility=View.VISIBLE
         }
         editCampusButton.setOnClickListener {
             startActivity(Intent(this, EditCampusActivity::class.java))
+        }
+        uploadAPKButton.setOnClickListener {
+            val intent = Intent(Intent.ACTION_GET_CONTENT)
+            intent.type = "application/vnd.android.package-archive"
+            intent.addCategory(Intent.CATEGORY_OPENABLE)
+            apkPickerLauncher.launch(Intent.createChooser(intent, "Select APK File"))
         }
 
         //check the history of visitor and gatePass
@@ -315,6 +335,61 @@ class ManagementMember : BaseActivity() {
                                 Toast.makeText(
                                     this@ManagementMember,
                                     "File uploaded successfully",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                val errorMsg = response.errorBody()?.string() ?: response.message()
+                                Toast.makeText(
+                                    this@ManagementMember,
+                                    "Upload failed: $errorMsg",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
+                            progressBar.stopAnimation()
+                        }
+
+                        override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                            progressBar.stopAnimation()
+                            Toast.makeText(
+                                this@ManagementMember,
+                                "Error: ${t.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    })
+            }
+
+        }
+    }
+
+    private fun uploadApk(uri: Uri) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val contentResolver = contentResolver
+            val inputStream: InputStream? = contentResolver.openInputStream(uri)
+            val fileName = getFileName(uri)
+
+            if (inputStream != null && fileName != null) {
+                val bytes = inputStream.use { it.readBytes() }
+
+                val mediaType = "application/vnd.android.package-archive".toMediaTypeOrNull()
+                val requestFile = bytes.toRequestBody(mediaType)
+
+                val body = MultipartBody.Part.createFormData("file", fileName, requestFile)
+
+                val tokenRequestBody =
+                    LoginUserDataHolder.token.toRequestBody("text/plain".toMediaTypeOrNull())
+
+                RetrofitClient.instance.uploadApkFile(body, tokenRequestBody)
+                    .enqueue(object : Callback<ResponseBody> {
+                        override fun onResponse(
+                            call: Call<ResponseBody>,
+                            response: Response<ResponseBody>
+                        ) {
+                            if (response.isSuccessful) {
+                                Toast.makeText(
+                                    this@ManagementMember,
+                                    "APK uploaded successfully",
                                     Toast.LENGTH_SHORT
                                 ).show()
                             } else {

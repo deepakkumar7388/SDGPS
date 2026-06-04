@@ -12,6 +12,8 @@ const UserManagement = ({ getImageUrl }) => {
   };
   const getUrl = getImageUrl || defaultGetImageUrl;
 
+  const CACHE_KEY = 'userManagement_cachedUsers';
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formMode, setFormMode] = useState(null); // null, 'ADD', 'EDIT'
@@ -113,12 +115,22 @@ const UserManagement = ({ getImageUrl }) => {
     }
   }, [roles]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (forceSync = false) => {
     setLoading(true);
     try {
+      if (!forceSync) {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          setUsers(JSON.parse(cached));
+          setLoading(false);
+          return;
+        }
+      }
       const token = localStorage.getItem('token');
       const data = await getMembersForUserManagement(token);
-      setUsers(data || []);
+      const fetchedUsers = data || [];
+      setUsers(fetchedUsers);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(fetchedUsers));
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
@@ -255,7 +267,10 @@ const UserManagement = ({ getImageUrl }) => {
     try {
       const token = localStorage.getItem('token');
       await removeUser({ token, removeEmail: email });
-      fetchUsers();
+      
+      const updatedUsers = users.filter(user => user.email !== email);
+      setUsers(updatedUsers);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(updatedUsers));
     } catch (error) {
       console.error('Error removing user:', error);
     }
@@ -317,16 +332,22 @@ const UserManagement = ({ getImageUrl }) => {
 
       if (userRole === 'admin') payload.campus = selectedCampus;
 
+      let updatedUsers = [...users];
+
       if (formMode === 'ADD') {
         await addNewUser(payload);
         alert('User added successfully');
+        updatedUsers.push({ ...payload });
       } else if (formMode === 'EDIT') {
         await editUser(payload);
         alert('User updated successfully');
+        const targetEmail = payload.previousEmail || payload.email;
+        updatedUsers = updatedUsers.map(u => u.email === targetEmail ? { ...u, ...payload, previousEmail: undefined } : u);
       }
 
+      setUsers(updatedUsers);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(updatedUsers));
       setFormMode(null);
-      await fetchUsers(); // explicitly fetch users again
     } catch (error) {
       alert(`Error ${formMode === 'ADD' ? 'adding' : 'updating'} user`);
       console.error(error);
@@ -340,7 +361,7 @@ const UserManagement = ({ getImageUrl }) => {
       const token = localStorage.getItem('token');
       await uploadExcelUsers(file, token);
       alert('Excel uploaded successfully');
-      fetchUsers();
+      fetchUsers(true);
     } catch (error) {
       alert('Error uploading excel');
     }
@@ -477,6 +498,7 @@ const UserManagement = ({ getImageUrl }) => {
     <div className="page-content animate-fade-in">
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', gap: '1rem' }}>
+          <button onClick={() => fetchUsers(true)} className="btn btn-outline">Sync</button>
           <input
             type="file"
             ref={fileInputRef}
