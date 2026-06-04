@@ -35,7 +35,7 @@ import java.io.File
 
 object CommonOperation {
 
-    val versionId="4"
+    val versionId="5"
     fun setupUserProfile(activity: Activity) {
 
         //we will do all this work with CoroutineScope
@@ -59,14 +59,15 @@ object CommonOperation {
                     }
                     
                     val url = loginUserData?.get("downloadUrl")?.toString() ?: "https://github.com/yogeshsaini7172/sistecDigitalPassRelease/releases/latest/download/app-release.apk"
+                    
+                    val downloadManager = activity.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+
                     val request = android.app.DownloadManager.Request(Uri.parse(url))
                         .setTitle("Digital Pass Update")
                         .setDescription("Downloading new version...")
                         .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "DigitalPass-update.apk")
                         .setMimeType("application/vnd.android.package-archive")
 
-                    val downloadManager = activity.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
                     val downloadId = downloadManager.enqueue(request)
                     
                     // Register broadcast receiver to auto install when done
@@ -93,7 +94,7 @@ object CommonOperation {
                         activity.registerReceiver(onComplete, android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE))
                     }
                     
-                    Toast.makeText(activity, "Download starting...", Toast.LENGTH_LONG).show()
+                    Toast.makeText(activity, "Updating...", Toast.LENGTH_LONG).show()
                 }
                 
                 activity.findViewById<ImageView>(R.id.laterButton)?.setOnClickListener {
