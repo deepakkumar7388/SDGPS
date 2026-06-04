@@ -7,12 +7,16 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-class BatchAdapter(private var batchList: ArrayList<String>) :
+data class BatchItemData(val name: String, val count: Int)
+
+class BatchAdapter(private var batchList: ArrayList<BatchItemData>) :
     RecyclerView.Adapter<BatchAdapter.ViewHolder>(){
 
         class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView){
             var batchName=itemView.findViewById<TextView>(R.id.itemBatchName)
             var batchLayout=itemView.findViewById<View>(R.id.batchItemLayout)
+            var memberCount=itemView.findViewById<TextView>(R.id.itemMemberCount)
+            var membersButton=itemView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnMembers)
         }
     override fun onCreateViewHolder(
         parent: ViewGroup,
@@ -23,14 +27,22 @@ class BatchAdapter(private var batchList: ArrayList<String>) :
     }
 
     override fun onBindViewHolder(holder: BatchAdapter.ViewHolder, position: Int) {
-        holder.batchName.text=batchList[position]
+        val batchItem = batchList[position]
+        holder.batchName.text = batchItem.name
+        holder.memberCount.text = "${batchItem.count} Members"
 
         holder.batchLayout.setOnClickListener {
             //navigate to level for batch
             var intent= Intent(holder.batchLayout.context, AddNewBatch::class.java)
-            intent.putExtra("batchName",batchList[position])
-            intent.putExtra("operation","edit")
+            intent.putExtra("batchName", batchItem.name)
+            intent.putExtra("operation", "edit")
             holder.batchLayout.context.startActivity(intent)
+        }
+        holder.membersButton.setOnClickListener {
+            var intent= Intent(holder.membersButton.context, UserManagement::class.java)
+            intent.putExtra("userManagementType","batch")
+            intent.putExtra("batchName", batchItem.name)
+            holder.membersButton.context.startActivity(intent)
         }
     }
 
@@ -38,9 +50,8 @@ class BatchAdapter(private var batchList: ArrayList<String>) :
         return batchList.size
     }
 
-    fun updateList(newList:ArrayList<String>){
-        batchList=newList
+    fun updateList(newList: ArrayList<BatchItemData>){
+        batchList = newList
         notifyDataSetChanged()
     }
-
 }

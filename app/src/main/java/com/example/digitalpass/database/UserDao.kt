@@ -25,4 +25,7 @@ interface UserDao {
 
     @Query("DELETE FROM users")
     fun deleteAllUsers()
+
+    @Query("SELECT * FROM users WHERE json_extract(userData, '$.batch') = :batchName")
+    fun getAllUsersOfBatch(batchName: String?): List<UserEntity>
 }

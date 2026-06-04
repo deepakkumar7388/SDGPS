@@ -155,7 +155,9 @@ class ManagementMember : BaseActivity() {
         //user management
         val userManagementButton = findViewById<MaterialButton>(R.id.userManagementButton)
         userManagementButton.setOnClickListener {
-            startActivity(Intent(this, UserManagement::class.java))
+            var intent=Intent(this,UserManagement::class.java)
+            intent.putExtra("userManagementType","userManagement")
+            startActivity(intent)
         }
 
         //edit campus

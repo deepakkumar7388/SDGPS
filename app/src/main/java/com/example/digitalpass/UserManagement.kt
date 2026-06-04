@@ -35,6 +35,8 @@ class UserManagement : BaseActivity() {
 
     private var progressBar: CustomProgressBar?=null
 
+    lateinit var toolbar: androidx.appcompat.widget.Toolbar
+
     private var activityResultFromUserView=registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ){result ->
@@ -73,10 +75,10 @@ class UserManagement : BaseActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
 
-            // 1. Get the Keyboard (IME) insets
+            // Get the Keyboard (IME) insets
             val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
 
-            // 2. Calculate the bottom padding.
+            // Calculate the bottom padding.
             // It should be the height of the keyboard OR the system navigation bar, whichever is larger.
             val bottomPadding = if (imeInsets.bottom > 0) imeInsets.bottom else systemBars.bottom
 
@@ -92,7 +94,7 @@ class UserManagement : BaseActivity() {
 
         database = AppDatabase.getDatabase(this)
 
-        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+        toolbar = findViewById(R.id.toolbar)
         toolbar.setNavigationOnClickListener {
             finish()
         }
@@ -196,15 +198,31 @@ class UserManagement : BaseActivity() {
 
         progressBar?.startProgressBar()
         CoroutineScope(Dispatchers.IO).launch {
-            val localUsers = database.userDao().getAllUsers()
-            if (localUsers.isNotEmpty()) {
-                memberList = ArrayList(localUsers.map { it.userData })
-                runOnUiThread {
-                    adapter.updateList(memberList)
-                    progressBar?.stopAnimation()
+            //check in intent if user management type is userManagement or there is no key in intent then we fetch all users
+            var userManagementType=intent?.getStringExtra("userManagementType")?:"userManagement"
+            if(userManagementType=="userManagement") {
+                val localUsers = database.userDao().getAllUsers()
+                if (localUsers.isNotEmpty()) {
+                    memberList = ArrayList(localUsers.map { it.userData })
+                    runOnUiThread {
+                        adapter.updateList(memberList)
+                        progressBar?.stopAnimation()
+                    }
+                } else {
+                    fetchUsersFromServer()
                 }
-            } else {
-                fetchUsersFromServer()
+            }
+            else{
+                var batchName=intent?.getStringExtra("batchName")
+                toolbar.title="User Management\n$batchName"
+                var localBatchMembers=database.userDao().getAllUsersOfBatch(batchName)
+                if(localBatchMembers.isNotEmpty()){
+                    memberList=ArrayList(localBatchMembers.map { it.userData })
+                    runOnUiThread {
+                        adapter.updateList(memberList)
+                        progressBar?.stopAnimation()
+                    }
+                }
             }
         }
     }

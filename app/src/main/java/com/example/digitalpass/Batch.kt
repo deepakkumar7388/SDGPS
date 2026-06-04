@@ -10,6 +10,8 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.digitalpass.database.AppDatabase
+import com.example.digitalpass.database.BatchEntity
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -22,10 +24,11 @@ import retrofit2.Response
 
 class Batch : BaseActivity() {
 
+    private lateinit var database: AppDatabase
     private lateinit var recyclerView: RecyclerView
-    private var allBatchList = ArrayList<String>()
-    private var studentBatchList = ArrayList<String>()
-    private var otherBatchList = ArrayList<String>()
+    private var allBatchList = ArrayList<BatchItemData>()
+    private var studentBatchList = ArrayList<BatchItemData>()
+    private var otherBatchList = ArrayList<BatchItemData>()
     private lateinit var batchAdapter: BatchAdapter
     private lateinit var batchFilterToggleGroup: MaterialButtonToggleGroup
 
@@ -38,10 +41,10 @@ class Batch : BaseActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
 
-            // 1. Get the Keyboard (IME) insets
+            // Get the Keyboard (IME) insets
             val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
 
-            // 2. Calculate the bottom padding.
+            // Calculate the bottom padding.
             // It should be the height of the keyboard OR the system navigation bar, whichever is larger.
             val bottomPadding = if (imeInsets.bottom > 0) imeInsets.bottom else systemBars.bottom
 
@@ -55,9 +58,21 @@ class Batch : BaseActivity() {
             insets
         }
 
+        database = AppDatabase.getDatabase(this)
+
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.setNavigationOnClickListener {
             finish()
+        }
+        toolbar.inflateMenu(R.menu.menu_user_management)
+        toolbar.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.action_sync -> {
+                    fetchBatchesFromServer(intent.getStringExtra("campusName")!!)
+                    true
+                }
+                else -> false
+            }
         }
 
         progressBar=findViewById(R.id.customProgressBar)
@@ -80,49 +95,116 @@ class Batch : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
+        fetchAllBatchData(intent.getStringExtra("campusName")!!)
+    }
 
+    private fun fetchAllBatchData(campusName: String) {
         progressBar?.startProgressBar()
         CoroutineScope(Dispatchers.IO).launch {
-            val callForAllBatch = RetrofitClient.instance.getAllBatches(hashMapOf(
-                "token" to LoginUserDataHolder.token,
-                "campus" to intent.getStringExtra("campusName")!!))
+            val localBatches = database.batchDao().getBatchesByCampus(campusName)
+            val localUsers = database.userDao().getAllUsers()
+            val counts = HashMap<String, Int>()
+            localUsers.forEach { user ->
+                val bName = user.userData["batch"]
+                if (bName != null) {
+                    counts[bName] = (counts[bName] ?: 0) + 1
+                }
+            }
 
-            callForAllBatch.enqueue(object : Callback<HashMap<String, ArrayList<String>>> {
-                override fun onResponse(
-                    call: Call<HashMap<String, ArrayList<String>>?>,
-                    response: Response<HashMap<String, ArrayList<String>>?>
-                ) {
-                    if (response.isSuccessful) {
-                        val batches = response.body()
-                        studentBatchList = batches?.get("student") ?: ArrayList()
-                        otherBatchList = batches?.get("member") ?: ArrayList()
-                        allBatchList = ArrayList(studentBatchList + otherBatchList)
+            if (localBatches.isNotEmpty()) {
+                studentBatchList = ArrayList(localBatches.filter { it.type == "student" }.map { BatchItemData(it.batchName, counts[it.batchName] ?: 0) })
+                otherBatchList = ArrayList(localBatches.filter { it.type == "member" }.map { BatchItemData(it.batchName, counts[it.batchName] ?: 0) })
+                allBatchList = ArrayList(studentBatchList + otherBatchList)
 
-                        if (!::batchAdapter.isInitialized) {
-                            batchAdapter = BatchAdapter(allBatchList)
-                            recyclerView.adapter = batchAdapter
-                        } else {
-                            // Refresh current filter state with new data
-                            val searchBatch = findViewById<SearchView>(R.id.searchBatch)
-                            filterWithQueryAndToggle(searchBatch.query?.toString())
-                        }
+                runOnUiThread {
+                    if (!::batchAdapter.isInitialized) {
+                        batchAdapter = BatchAdapter(allBatchList)
+                        recyclerView.adapter = batchAdapter
                     } else {
-                        val errorMessage = LoginUserDataHolder.getErrorMessage(response)
-                        Toast.makeText(this@Batch, errorMessage, Toast.LENGTH_LONG).show()
+                        // Refresh current filter state with new data
+                        val searchBatch = findViewById<SearchView>(R.id.searchBatch)
+                        filterWithQueryAndToggle(searchBatch.query?.toString())
                     }
-
                     progressBar?.stopAnimation()
                 }
+            } else {
+                fetchBatchesFromServer(campusName)
+            }
+        }
+    }
 
-                override fun onFailure(
-                    call: Call<HashMap<String, ArrayList<String>>?>,
-                    t: Throwable
-                ) {
+    private fun fetchBatchesFromServer(campusName: String) {
+        runOnUiThread { progressBar?.startProgressBar() }
+        val callForAllBatch = RetrofitClient.instance.getAllBatches(hashMapOf(
+            "token" to LoginUserDataHolder.token,
+            "campus" to campusName))
+
+        callForAllBatch.enqueue(object : Callback<HashMap<String, ArrayList<String>>> {
+            override fun onResponse(
+                call: Call<HashMap<String, ArrayList<String>>?>,
+                response: Response<HashMap<String, ArrayList<String>>?>
+            ) {
+                if (response.isSuccessful) {
+                    val batches = response.body()
+                    val fetchedStudentList = batches?.get("student") ?: ArrayList()
+                    val fetchedOtherList = batches?.get("member") ?: ArrayList()
+                    
+                    CoroutineScope(Dispatchers.IO).launch {
+                        database.batchDao().deleteBatchesByCampus(campusName)
+                        
+                        val entities = ArrayList<BatchEntity>()
+                        fetchedStudentList.forEach { batchName ->
+                            entities.add(BatchEntity(batchName, "student", campusName))
+                        }
+                        fetchedOtherList.forEach { batchName ->
+                            entities.add(BatchEntity(batchName, "member", campusName))
+                        }
+                        
+                        database.batchDao().insertAll(entities)
+
+                        val localUsers = database.userDao().getAllUsers()
+                        val counts = HashMap<String, Int>()
+                        localUsers.forEach { user ->
+                            val bName = user.userData["batch"]
+                            if (bName != null) {
+                                counts[bName] = (counts[bName] ?: 0) + 1
+                            }
+                        }
+                        
+                        studentBatchList = ArrayList(fetchedStudentList.map { BatchItemData(it, counts[it] ?: 0) })
+                        otherBatchList = ArrayList(fetchedOtherList.map { BatchItemData(it, counts[it] ?: 0) })
+                        allBatchList = ArrayList(studentBatchList + otherBatchList)
+                        
+                        runOnUiThread {
+                            if (!::batchAdapter.isInitialized) {
+                                batchAdapter = BatchAdapter(allBatchList)
+                                recyclerView.adapter = batchAdapter
+                            } else {
+                                val searchBatch = findViewById<SearchView>(R.id.searchBatch)
+                                filterWithQueryAndToggle(searchBatch.query?.toString())
+                            }
+                            progressBar?.stopAnimation()
+                        }
+                    }
+                } else {
+                    val errorMessage = LoginUserDataHolder.getErrorMessage(response)
+                    runOnUiThread {
+                        Toast.makeText(this@Batch, errorMessage, Toast.LENGTH_LONG).show()
+                        progressBar?.stopAnimation()
+                    }
+                }
+            }
+
+            override fun onFailure(
+                call: Call<HashMap<String, ArrayList<String>>?>,
+                t: Throwable
+            ) {
+                runOnUiThread {
                     progressBar?.stopAnimation()
                     Toast.makeText(this@Batch, "Network error", Toast.LENGTH_SHORT).show()
                 }
-            })
-        }
+            }
+        })
     }
 
     private fun setupFilter() {
@@ -163,7 +245,7 @@ class Batch : BaseActivity() {
         val filteredList = if (query.isNullOrBlank()) {
             baseList
         } else {
-            baseList.filter { it.contains(query, ignoreCase = true) }
+            baseList.filter { it.name.contains(query, ignoreCase = true) }
         }
 
         if (::batchAdapter.isInitialized) {
