@@ -51,6 +51,7 @@ class Student : BaseActivity() {
     private var pendingReason: String = ""
 
     private var progressBar: CustomProgressBar?=null
+    private var applyButton:Button?=null
 
     private var getCommonData={gatePass:HashMap<String,String>->
         gatePass["img"]=LoginUserDataHolder.loginUserData?.get("img")?:""
@@ -114,8 +115,8 @@ class Student : BaseActivity() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         //apply for gate pass
-        var applyButton=findViewById<Button>(R.id.applyForGatePass)
-        applyButton.setOnClickListener {
+        applyButton=findViewById<Button>(R.id.applyForGatePass)
+        applyButton?.setOnClickListener {
             showDialogueToGetReason()
         }
 
@@ -140,7 +141,9 @@ class Student : BaseActivity() {
             if(reason.text.toString().trim()==""){
                 Toast.makeText(this,"Please enter reason",Toast.LENGTH_SHORT).show()
             }else{
+                dialogApplyButton.isEnabled=false
                 checkLocationAndApply(reason.text.toString().trim())
+                dialogApplyButton.isEnabled=true
                 dialog.dismiss()
             }
         }
@@ -156,15 +159,18 @@ class Student : BaseActivity() {
         }
 
         progressBar?.startProgressBar()
+        applyButton?.isEnabled=false
         fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
             if (location != null) {
                 applyForGatePass(reason, location.latitude.toString(), location.longitude.toString())
             } else {
                 progressBar?.stopAnimation()
+                applyButton?.isEnabled=true
                 Toast.makeText(this, "Unable to get location. Please ensure GPS is enabled.", Toast.LENGTH_SHORT).show()
             }
         }.addOnFailureListener {
             progressBar?.stopAnimation()
+            applyButton?.isEnabled=true
             Toast.makeText(this, "Failed to get location.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -181,6 +187,8 @@ class Student : BaseActivity() {
     }
 
     private fun applyForGatePass(reason: String, latitude: String, longitude: String) {
+        progressBar?.startProgressBar()
+        applyButton?.isEnabled=false
         var callToApplyGatePass= RetrofitClient.instance.applyForGatePass(
             hashMapOf(
                 "reason" to reason,
@@ -195,6 +203,7 @@ class Student : BaseActivity() {
                 response: Response<HashMap<String, String>?>
             ) {
                 progressBar?.stopAnimation()
+                applyButton?.isEnabled=true
                 if(response.isSuccessful){
                     triggerSuccessAnimation(response.body()!!)
                 }else{
@@ -207,6 +216,8 @@ class Student : BaseActivity() {
                 t: Throwable
             ) {
                 progressBar?.stopAnimation()
+                applyButton?.isEnabled=true
+                Toast.makeText(this@Student,"Something went wrong",Toast.LENGTH_SHORT).show()
             }
         })
     }
@@ -367,7 +378,4 @@ class Student : BaseActivity() {
 
     }
 
-    override fun onResume(){
-        super.onResume()
-    }
 }

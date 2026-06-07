@@ -124,6 +124,7 @@ class SecurityGuard : BaseActivity() {
                 intent.putExtra("operation", "enter")
                 startActivity(intent)
             }
+            else Toast.makeText(this, "Not assigned for campus", Toast.LENGTH_SHORT).show()
         }
 
         searchBar=findViewById<SearchView>(R.id.search)

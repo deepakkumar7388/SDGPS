@@ -255,6 +255,7 @@ class AddNewBatch : BaseActivity() {
             }
 
             progressBar.startProgressBar()
+            add.isEnabled=false
 
             var newBatchData = BatchData(
                 LoginUserDataHolder.token,
@@ -272,6 +273,7 @@ class AddNewBatch : BaseActivity() {
                         response: Response<ResponseBody?>
                     ) {
                         progressBar.stopAnimation()
+                        add.isEnabled=true
                         if (response.isSuccessful) {
                             Toast.makeText(
                                 this@AddNewBatch,
@@ -294,6 +296,8 @@ class AddNewBatch : BaseActivity() {
                     ) {
                         Toast.makeText(this@AddNewBatch, "Something went wrong", Toast.LENGTH_SHORT)
                             .show()
+                        progressBar.stopAnimation()
+                        add.isEnabled=true
                     }
 
                 })
@@ -361,6 +365,7 @@ class AddNewBatch : BaseActivity() {
             //to remove batch
             if(add.text=="Remove"){
                 progressBar.startProgressBar()
+                add.isEnabled=false
                 CoroutineScope(Dispatchers.IO).launch {
                     var callToRemoveBatch=RetrofitClient.instance.removeBatch(
                         hashMapOf(
@@ -376,13 +381,13 @@ class AddNewBatch : BaseActivity() {
                             response: Response<ResponseBody?>
                         ) {
                             progressBar.stopAnimation()
+                            add.isEnabled=true
                             if(response.isSuccessful){
                                 Toast.makeText(this@AddNewBatch, "Batch removed successfully", Toast.LENGTH_SHORT).show()
                                 finish()
                             }
                             else{
                                 var errorMessage = LoginUserDataHolder.getErrorMessage(response)
-
                                 // Display the extracted or fallback error message in a long toast
                                 Toast.makeText(this@AddNewBatch, errorMessage, Toast.LENGTH_LONG).show()
                             }
@@ -393,6 +398,7 @@ class AddNewBatch : BaseActivity() {
                             t: Throwable
                         ) {
                             progressBar.stopAnimation()
+                            add.isEnabled=true
                             Toast.makeText(this@AddNewBatch, "Something went wrong", Toast.LENGTH_SHORT).show()
                         }
                     })
@@ -406,6 +412,7 @@ class AddNewBatch : BaseActivity() {
                 }
 
                 progressBar.startProgressBar()
+                add.isEnabled=false
                 CoroutineScope(Dispatchers.IO).launch {
                     //edit batch
                     var batchData=BatchData(
@@ -422,6 +429,7 @@ class AddNewBatch : BaseActivity() {
                            response: Response<ResponseBody?>
                        ) {
                            progressBar.stopAnimation()
+                           add.isEnabled=true
                            if(response.isSuccessful){
                                Toast.makeText(this@AddNewBatch, "Batch edited successfully", Toast.LENGTH_SHORT).show()
                                add.text="Remove"
@@ -441,6 +449,7 @@ class AddNewBatch : BaseActivity() {
                            t: Throwable
                        ) {
                            progressBar.stopAnimation()
+                           add.isEnabled=true
                            Toast.makeText(this@AddNewBatch, "Something went wrong", Toast.LENGTH_SHORT).show()
                        }
 
@@ -466,10 +475,6 @@ class AddNewBatch : BaseActivity() {
             startActivityForResult(intent,2)
         }
 
-    }
-
-    override fun onResume(){
-        super.onResume()
     }
 
 }

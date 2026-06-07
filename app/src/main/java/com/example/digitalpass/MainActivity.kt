@@ -61,6 +61,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             progressBar.startProgressBar()
+            loginButton.isEnabled = false
             val loginData = LoginData(emailSt, passwordSt)
             val call = RetrofitClient.instance.loginUser(loginData)
             call.enqueue(object : Callback<HashMap<String, String>> {
@@ -92,10 +93,12 @@ class MainActivity : AppCompatActivity() {
                         Toast.makeText(this@MainActivity, "Login Failed", Toast.LENGTH_SHORT).show()
                     }
                     progressBar.stopAnimation()
+                    loginButton.isEnabled = true
                 }
 
                 override fun onFailure(call: Call<HashMap<String, String>>, t: Throwable) {
                     progressBar.stopAnimation()
+                    loginButton.isEnabled = true
                     Toast.makeText(this@MainActivity, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
                 }
             })

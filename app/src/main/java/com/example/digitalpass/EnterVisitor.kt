@@ -326,19 +326,26 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
         //gone the visibility of otherInfo
         otherInfo.visibility=View.GONE
 
+        //select reception by default
+        if(selectedMember==null){
+            var receptionPosition=memberList.indexOfFirst { it["role"]=="reception" }
+            if(receptionPosition!=-1)selectedMember=memberList[receptionPosition]
+            else Toast.makeText(this,"Please select member",Toast.LENGTH_SHORT).show()
+        }
+
         enterVisitorButton.setOnClickListener {
             //check all the fields are filled
             if(multipartImage==null||
                 name.text.toString()==""||
                 phone.text.toString()==""||
                 numberOfVisitor.text.toString()==""||
-                reason.text.toString()==""||
-                selectedMember==null){
+                reason.text.toString()==""){
                 Toast.makeText(this, "Please fill all the fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             progressBar?.startProgressBar()
+            enterVisitorButton.isEnabled=false
             var visitor=hashMapOf(
                 "name" to name.text.toString(),
                 "phone" to phone.text.toString(),
@@ -361,6 +368,7 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
                     response: Response<ResponseBody?>
                 ) {
                     progressBar?.stopAnimation()
+                    enterVisitorButton.isEnabled=true
                     if(response.isSuccessful){
                         Toast.makeText(this@EnterVisitor, "Visitor entered successfully", Toast.LENGTH_SHORT).show()
                         finish()
@@ -373,6 +381,7 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
                     t: Throwable
                 ) {
                     progressBar?.stopAnimation()
+                    enterVisitorButton.isEnabled=true
                     Toast.makeText(this@EnterVisitor, "Something went wrong", Toast.LENGTH_SHORT).show()
                 }
             })
@@ -461,11 +470,17 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
     }
     private fun setupEnterVisitorButtonToEdit(){
 
+        //select reception by default
+        if(selectedMember==null){
+            var receptionPosition=memberList.indexOfFirst { it["role"]=="reception" }
+            if(receptionPosition!=-1)selectedMember=memberList[receptionPosition]
+            else Toast.makeText(this,"Please select member",Toast.LENGTH_SHORT).show()
+        }
+
             if(name.text.toString()==""||
                 phone.text.toString()==""||
                 numberOfVisitor.text.toString()==""||
-                reason.text.toString()==""||
-                selectedMember==null){
+                reason.text.toString()==""){
                 Toast.makeText(this, "Please fill all the fields", Toast.LENGTH_SHORT).show()
                 return
             }
@@ -488,6 +503,7 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
         else {
 
                 progressBar?.startProgressBar()
+                enterVisitorButton.isEnabled=false
                 changedVisitorHashMap["visitorId"] = visitorData!!["visitorId"].toString()
                 changedVisitorHashMap["token"] = LoginUserDataHolder.token
 
@@ -503,6 +519,7 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
                         response: Response<ResponseBody?>
                     ) {
                         progressBar?.stopAnimation()
+                        enterVisitorButton.isEnabled=true
                         if (response.isSuccessful) {
                             Toast.makeText(
                                 this@EnterVisitor,
@@ -523,6 +540,7 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
                         t: Throwable
                     ) {
                         progressBar?.stopAnimation()
+                        enterVisitorButton.isEnabled=true
                         Toast.makeText(
                             this@EnterVisitor,
                             "Something went wrong",
@@ -537,20 +555,20 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
 
 
     private fun showDialogToGetReason() {
-        // 1. Inflate the custom layout
+        // Inflate the custom layout
         val dialogView = layoutInflater.inflate(R.layout.show_dialog_to_give_aproval_visitor, null)
 
-        // 2. Find views inside the inflated dialogView (NOT the dialog itself yet)
-        // Assuming 'remark' is an EditText. Change to TextInputEditText if using Material components.
+        // Find views inside the inflated dialogView (NOT the dialog itself yet)
+        // Assuming remark is an EditText, Change to TextInputEditText if using Material components
         val enteredRemark = dialogView.findViewById<EditText>(R.id.remark)
         val doneButton = dialogView.findViewById<Button>(R.id.remarkDoneButton)
 
-        // 3. Build and show the dialog
+        //  Build and show the dialog
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogView)
             .create()
 
-        // 4. Set the click listener on the button inside the dialog
+        //  Set the click listener on the button inside the dialog
         doneButton?.setOnClickListener {
             val remarkText = enteredRemark?.text.toString()
 
@@ -575,6 +593,7 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
     private fun meetVisitor(meetData: HashMap<String, String>){
 
         progressBar?.startProgressBar()
+        enterVisitorButton.isEnabled=false
         var callToMeetVisitor= RetrofitClient.instance.meetVisitor(meetData)
         callToMeetVisitor.enqueue(object : Callback<ResponseBody> {
             override fun onResponse(
@@ -582,6 +601,7 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
                 response: Response<ResponseBody?>
             ) {
                 progressBar?.stopAnimation()
+                enterVisitorButton.isEnabled=true
                 if(response.isSuccessful){
                     if(LoginUserDataHolder.loginUserData?.get("role")=="security guard")Toast.makeText(this@EnterVisitor, "Visitor exited successfully", Toast.LENGTH_SHORT).show()
                     else Toast.makeText(this@EnterVisitor, "Visitor met successfully", Toast.LENGTH_SHORT).show()
@@ -595,13 +615,12 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
                 call: Call<ResponseBody?>,
                 t: Throwable
             ) {
+                progressBar?.stopAnimation()
+                enterVisitorButton.isEnabled=true
                 Toast.makeText(this@EnterVisitor, "Something went wrong", Toast.LENGTH_SHORT).show()
             }
 
         })
     }
 
-    override fun onResume(){
-        super.onResume()
-    }
 }

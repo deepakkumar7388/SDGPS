@@ -281,6 +281,7 @@ class AddUser : BaseActivity() {
 
         //start progress bar
         progressBar.startProgressBar()
+        addButton.isEnabled=false
 
         var newUser=hashMapOf(
             "name" to name.text.toString(),
@@ -315,19 +316,17 @@ class AddUser : BaseActivity() {
                         }
                     }
                     progressBar.stopAnimation()
+                    addButton.isEnabled=true
                 }
 
                 override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
                     progressBar.stopAnimation()
                     runOnUiThread {
                         Toast.makeText(this@AddUser, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
+                        addButton.isEnabled=true
                     }
                 }
             })
         }
-    }
-
-    override fun onResume(){
-        super.onResume()
     }
 }

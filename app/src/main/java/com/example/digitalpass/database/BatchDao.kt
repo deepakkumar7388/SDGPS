@@ -15,4 +15,7 @@ interface BatchDao {
 
     @Query("DELETE FROM batches WHERE campus = :campus")
     fun deleteBatchesByCampus(campus: String)
+
+    @Query("DELETE FROM batches")
+    fun deleteAllBatches()
 }

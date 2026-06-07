@@ -93,6 +93,7 @@ class CustomProgressBar(context: Context, attrs: AttributeSet) : View(context, a
     }
 
     fun startProgressBar() {
+
         if (isAnimating) return
         visibility = VISIBLE
         isAnimating = true

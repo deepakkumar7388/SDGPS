@@ -92,6 +92,7 @@ class ForgetPassword : AppCompatActivity() {
     private fun sendVerificationCode(){
 
         progressBar.startProgressBar()
+        doneButton.isEnabled=false
 
         //send verification code to the email
         var callToSendVerificationCode= RetrofitClient.instance.sendVerificationCode(emailText)
@@ -137,12 +138,14 @@ class ForgetPassword : AppCompatActivity() {
                 else Toast.makeText(this@ForgetPassword, LoginUserDataHolder.getErrorMessage(response),Toast.LENGTH_SHORT).show()
 
                 progressBar.stopAnimation()
+                doneButton.isEnabled=true
             }
             override fun onFailure(
                 call: Call<ResponseBody?>,
                 t: Throwable
             ) {
                 progressBar.stopAnimation()
+                doneButton.isEnabled=true
                 Toast.makeText(this@ForgetPassword,"Something is went wrong",Toast.LENGTH_SHORT).show()
             }
         })
@@ -150,6 +153,7 @@ class ForgetPassword : AppCompatActivity() {
 
     private fun verifyVerificationCode(){
         progressBar.startProgressBar()
+        doneButton.isEnabled=false
         verificationCode=email.text.toString()
         //verify the verification code
         var callToVerifyVerificationCode= RetrofitClient.instance.verifyVerificationCode(hashMapOf(
@@ -193,6 +197,7 @@ class ForgetPassword : AppCompatActivity() {
                 else Toast.makeText(this@ForgetPassword, LoginUserDataHolder.getErrorMessage(response),Toast.LENGTH_SHORT).show()
 
                 progressBar.stopAnimation()
+                doneButton.isEnabled=true
             }
 
             override fun onFailure(
@@ -200,6 +205,7 @@ class ForgetPassword : AppCompatActivity() {
                 t: Throwable
             ) {
                 progressBar.stopAnimation()
+                doneButton.isEnabled=true
                 Toast.makeText(this@ForgetPassword,"Something is went wrong",Toast.LENGTH_SHORT).show()
             }
         })
@@ -207,6 +213,7 @@ class ForgetPassword : AppCompatActivity() {
 
     private fun updatePassword(newPassword:String){
         progressBar.startProgressBar()
+        doneButton.isEnabled=false
         //call to update password
         var callToUpdatePassword= RetrofitClient.instance.updatePassword(hashMapOf(
             "email" to emailText,
@@ -252,10 +259,12 @@ class ForgetPassword : AppCompatActivity() {
                 }
                 else Toast.makeText(this@ForgetPassword, LoginUserDataHolder.getErrorMessage(response),Toast.LENGTH_SHORT).show()
                 progressBar.stopAnimation()
+                doneButton.isEnabled=true
             }
 
             override fun onFailure(call: Call<String?>, t: Throwable) {
                 progressBar.stopAnimation()
+                doneButton.isEnabled=true
                 Toast.makeText(this@ForgetPassword,"Something went wrong",Toast.LENGTH_SHORT).show()
             }
         })

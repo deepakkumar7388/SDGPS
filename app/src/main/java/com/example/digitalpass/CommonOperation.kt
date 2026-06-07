@@ -18,6 +18,7 @@ import androidx.exifinterface.media.ExifInterface
 import com.bumptech.glide.Glide
 import com.example.digitalpass.LoginUserDataHolder.loginUserData
 import com.example.digitalpass.LoginUserDataHolder.token
+import com.example.digitalpass.database.AppDatabase
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +36,8 @@ import java.io.File
 
 object CommonOperation {
 
-    val versionId="5"
+    val versionId="6"
+    var logoutButton: MaterialButton?=null
     fun setupUserProfile(activity: Activity) {
 
         //we will do all this work with CoroutineScope
@@ -47,7 +49,8 @@ object CommonOperation {
                 val updateLayout = activity.findViewById<View>(R.id.updateBanner)
                 updateLayout?.visibility = View.VISIBLE
                 
-                activity.findViewById<MaterialButton>(R.id.updateAppButton)?.setOnClickListener {
+                var updateButton=activity.findViewById<MaterialButton>(R.id.updateAppButton)
+                    updateButton.setOnClickListener {
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                         if (!activity.packageManager.canRequestPackageInstalls()) {
                             val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
@@ -57,6 +60,8 @@ object CommonOperation {
                             return@setOnClickListener
                         }
                     }
+                        updateLayout.visibility=View.GONE
+
                     
                     val url = loginUserData?.get("downloadUrl")?.toString() ?: "https://github.com/yogeshsaini7172/sistecDigitalPassRelease/releases/latest/download/app-release.apk"
                     
@@ -84,7 +89,8 @@ object CommonOperation {
                                 }
                                 try {
                                     context?.unregisterReceiver(this)
-                                } catch (e: Exception) {}
+                                } catch (e: Exception) {
+                                }
                             }
                         }
                     }
@@ -143,9 +149,8 @@ object CommonOperation {
                 activity.findViewById<TextView>(R.id.fatherName).text =LoginUserDataHolder.loginUserData?.get("fathername")
                 activity.findViewById<TextView>(R.id.fatherPhone).text =LoginUserDataHolder.loginUserData?.get("fatherphone")
             }
-
-            var logoutButton=activity.findViewById<com.google.android.material.button.MaterialButton>(R.id.logoutButton)
-            logoutButton.setOnClickListener {
+            logoutButton=activity.findViewById<com.google.android.material.button.MaterialButton>(R.id.logoutButton)
+            logoutButton?.setOnClickListener {
                 logout(activity)
             }
         }
@@ -217,6 +222,7 @@ object CommonOperation {
 
     //logOut the user by socket disconnecting,remove token and remove fcm token
     fun logout(context:Context) {
+        logoutButton?.isEnabled=false
         //first we have to remove fcm token from database
         var callToLogout= RetrofitClient.instance.logout(token)
         callToLogout.enqueue(object : Callback<ResponseBody> {
@@ -225,6 +231,7 @@ object CommonOperation {
                 response: Response<ResponseBody?>
             ) {
                 if(response.isSuccessful){
+
                     SocketManager.disconnect()
                     token=""
                     loginUserData=null
@@ -241,13 +248,18 @@ object CommonOperation {
                     }
 
                 }
+                else{
+                    Toast.makeText(context, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_SHORT).show()
+                }
+                logoutButton?.isEnabled=true
             }
 
             override fun onFailure(
                 call: Call<ResponseBody?>,
                 t: Throwable
             ) {
-                
+                Toast.makeText(context, "Something went wrong", Toast.LENGTH_SHORT).show()
+                logoutButton?.isEnabled=true
             }
         })
 

@@ -343,6 +343,7 @@ class UserManagementViewUser : BaseActivity() {
     private fun removeUser() {
 
         progressBar?.startProgressBar()
+        doneButton.isEnabled=false
         CoroutineScope(Dispatchers.IO).launch {
             val call = RetrofitClient.instance.removeUser(hashMapOf(
                 "removeEmail" to user["email"]!!,
@@ -354,6 +355,7 @@ class UserManagementViewUser : BaseActivity() {
                     response: Response<ResponseBody?>
                 ) {
                     progressBar?.stopAnimation()
+                    doneButton.isEnabled=true
                     if (response.isSuccessful) {
                         Toast.makeText(this@UserManagementViewUser, "User removed successfully", Toast.LENGTH_SHORT).show()
 
@@ -375,6 +377,7 @@ class UserManagementViewUser : BaseActivity() {
                     t: Throwable
                 ) {
                     progressBar?.stopAnimation()
+                    doneButton.isEnabled=true
                     Toast.makeText(this@UserManagementViewUser, "Something went wrong: ${t.message}", Toast.LENGTH_SHORT).show()
                 }
             })
@@ -402,6 +405,7 @@ class UserManagementViewUser : BaseActivity() {
         }
 
         progressBar?.startProgressBar()
+        doneButton.isEnabled=false
 
         var newUser=hashMapOf(
             "previousEmail" to user["email"],
@@ -427,6 +431,7 @@ class UserManagementViewUser : BaseActivity() {
             call.enqueue(object : Callback<ResponseBody> {
                 override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                     progressBar?.stopAnimation()
+                    doneButton.isEnabled=true
                     if (response.isSuccessful) {
                         runOnUiThread {
                             Toast.makeText(this@UserManagementViewUser, "User edited successfully", Toast.LENGTH_SHORT).show()
@@ -453,7 +458,6 @@ class UserManagementViewUser : BaseActivity() {
                             finish() // Close activity on success
                         }
                     } else {
-                        val errorMessage = LoginUserDataHolder.getErrorMessage(response)
                         runOnUiThread {
                             Toast.makeText(this@UserManagementViewUser, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_LONG).show()
                         }
@@ -462,6 +466,7 @@ class UserManagementViewUser : BaseActivity() {
 
                 override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
                     progressBar?.stopAnimation()
+                    doneButton.isEnabled=true
                     runOnUiThread {
                         Toast.makeText(this@UserManagementViewUser, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
                     }
@@ -470,7 +475,4 @@ class UserManagementViewUser : BaseActivity() {
         }
     }
 
-    override fun onResume(){
-        super.onResume()
-    }
 }

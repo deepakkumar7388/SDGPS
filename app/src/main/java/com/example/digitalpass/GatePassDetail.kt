@@ -36,6 +36,7 @@ class GatePassDetail : BaseActivity() {
     lateinit var approve: MaterialButton
 
     private var progressBar: CustomProgressBar?=null
+    private var reject: MaterialButton?=null
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,7 +80,7 @@ class GatePassDetail : BaseActivity() {
         otherInfoDescription=findViewById(R.id.otherInformationDescription)
         var callIcon=findViewById<MaterialButton>(R.id.callIcon)
         var editButton=findViewById<ImageView>(R.id.editButton)
-        var reject=findViewById<MaterialButton>(R.id.rejectButton)
+        reject=findViewById(R.id.rejectButton)
         approve=findViewById(R.id.approveButton)
         var tgRemarkLayout=findViewById<TextInputLayout>(R.id.tgRemarkInputLayout)
         tgRemark=findViewById(R.id.tgRemark)
@@ -88,13 +89,13 @@ class GatePassDetail : BaseActivity() {
 
         //the user can not do any operation when status is not (pending or approving) ,also can not do any thing when apply date is not equal to current date
         if(gatePass["status"]!="pending"&&gatePass["status"]!="approving"||checkDate()){
-            reject.visibility= View.GONE
+            reject?.visibility= View.GONE
             approve.visibility=View.GONE
             editButton.visibility=View.GONE
         }
 
         if(intent.getStringExtra("operationType")=="self"){
-            reject.visibility= View.GONE
+            reject?.visibility= View.GONE
             callIcon.visibility=View.GONE
 
             if(gatePass["status"]=="pending"){
@@ -121,7 +122,7 @@ class GatePassDetail : BaseActivity() {
                 }
             }
             else {
-                reject.setOnClickListener {
+                reject?.setOnClickListener {
                     rejectGatePass()
                 }
                 approve.setOnClickListener {
@@ -135,7 +136,7 @@ class GatePassDetail : BaseActivity() {
             approve.text="Done"
             editButton.visibility=View.GONE
             reason.isEnabled=true
-            reject.visibility=View.GONE
+            reject?.visibility=View.GONE
 
             if(intent.getStringExtra("operationType")=="member")tgRemark.isEnabled=true
         }
@@ -168,7 +169,7 @@ class GatePassDetail : BaseActivity() {
 
         //setup gate pass for history
         if(intent.getStringExtra("listType")=="history"){
-            reject.visibility= View.GONE
+            reject?.visibility= View.GONE
             approve.visibility=View.GONE
             editButton.visibility=View.GONE
         }
@@ -192,6 +193,7 @@ class GatePassDetail : BaseActivity() {
         approve.setOnClickListener {
             if(approve.text=="Remove"){
                 progressBar?.startProgressBar()
+                approve.isEnabled=false
                 var callToRemove= RetrofitClient.instance.removeGatePassBySelfUser(
                     hashMapOf(
                         "token" to LoginUserDataHolder.token,
@@ -205,6 +207,7 @@ class GatePassDetail : BaseActivity() {
                     ) {
 
                         progressBar?.stopAnimation()
+                        approve.isEnabled=true
                         if(response.isSuccessful){
                             Toast.makeText(this@GatePassDetail,"Gate Pass Removed Successfully",Toast.LENGTH_SHORT).show()
                             finish()
@@ -217,6 +220,7 @@ class GatePassDetail : BaseActivity() {
                         t: Throwable
                     ) {
                         progressBar?.stopAnimation()
+                        approve.isEnabled=true
                         Toast.makeText(this@GatePassDetail, "Something went wrong",Toast.LENGTH_SHORT).show()
                     }
                 })
@@ -233,6 +237,7 @@ class GatePassDetail : BaseActivity() {
                 return
             }
             progressBar?.startProgressBar()
+            approve.isEnabled=false
             var callToEdit= RetrofitClient.instance.editGatePassBySelfUser(hashMapOf(
                 "token" to LoginUserDataHolder.token,
                 "reason" to reason.text.toString(),
@@ -245,6 +250,7 @@ class GatePassDetail : BaseActivity() {
                 ) {
 
                     progressBar?.stopAnimation()
+                    approve.isEnabled=true
                     if(response.isSuccessful){
                         Toast.makeText(this@GatePassDetail,"Gate Pass Edited Successfully",Toast.LENGTH_SHORT).show()
                         finish()
@@ -257,6 +263,7 @@ class GatePassDetail : BaseActivity() {
                     t: Throwable
                 ) {
                     progressBar?.stopAnimation()
+                    approve.isEnabled=true
                     Toast.makeText(this@GatePassDetail, "Something went wrong",Toast.LENGTH_SHORT).show()
                 }
             })
@@ -286,6 +293,7 @@ class GatePassDetail : BaseActivity() {
 
     private fun rejectGatePass(){
         progressBar?.startProgressBar()
+        reject?.isEnabled=false
         var callToReject= RetrofitClient.instance.rejectGatePass(hashMapOf(
             "token" to LoginUserDataHolder.token,
             "gatePassId" to gatePass["gatePassId"]!!
@@ -296,6 +304,7 @@ class GatePassDetail : BaseActivity() {
                 response: Response<ResponseBody?>
             ) {
                 progressBar?.stopAnimation()
+                reject?.isEnabled=true
                 if(response.isSuccessful){
                     Toast.makeText(this@GatePassDetail,"Gate Pass Rejected Successfully",Toast.LENGTH_SHORT).show()
                     finish()
@@ -308,6 +317,7 @@ class GatePassDetail : BaseActivity() {
                 t: Throwable
             ) {
                 progressBar?.stopAnimation()
+                reject?.isEnabled=true
                 Toast.makeText(this@GatePassDetail, "Something went wrong",Toast.LENGTH_SHORT)
             }
         })
@@ -352,6 +362,7 @@ class GatePassDetail : BaseActivity() {
 
     private fun approveTheGatePass(dataForApproval: HashMap<String, String>){
         progressBar?.startProgressBar()
+        approve.isEnabled=false
         var callToGiveApproval= RetrofitClient.instance.approveGatePass(dataForApproval)
         callToGiveApproval.enqueue(object: Callback<ResponseBody> {
             override fun onResponse(
@@ -359,6 +370,7 @@ class GatePassDetail : BaseActivity() {
                 response: Response<ResponseBody?>
             ) {
                 progressBar?.stopAnimation()
+                approve.isEnabled=true
                 if(response.isSuccessful) {
                     if(LoginUserDataHolder.loginUserData?.get("role")=="security guard")
                         Toast.makeText(this@GatePassDetail,"Exited Successfully",Toast.LENGTH_SHORT).show()
@@ -377,6 +389,7 @@ class GatePassDetail : BaseActivity() {
                 t: Throwable
             ) {
                 progressBar?.stopAnimation()
+                approve.isEnabled=true
                 Toast.makeText(this@GatePassDetail, "Something went wrong",Toast.LENGTH_SHORT)
             }
 
@@ -402,6 +415,7 @@ class GatePassDetail : BaseActivity() {
         else {
 
             progressBar?.startProgressBar()
+            approve.isEnabled=false
 
             CoroutineScope(Dispatchers.IO).launch {
 
@@ -415,6 +429,7 @@ class GatePassDetail : BaseActivity() {
                         response: Response<ResponseBody?>
                     ) {
                         progressBar?.stopAnimation()
+                        approve.isEnabled=true
                         if (response.isSuccessful) {
                             Toast.makeText(
                                 this@GatePassDetail,
@@ -434,6 +449,7 @@ class GatePassDetail : BaseActivity() {
                         t: Throwable
                     ) {
                         progressBar?.stopAnimation()
+                        approve.isEnabled=true
                         Toast.makeText(
                             this@GatePassDetail,
                             "Something went wrong",
@@ -446,7 +462,4 @@ class GatePassDetail : BaseActivity() {
         }
     }
 
-    override fun onResume(){
-        super.onResume()
-    }
 }

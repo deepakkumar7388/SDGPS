@@ -45,6 +45,7 @@ class AppliedGatePassBySelfUser : BaseActivity() {
     
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var pendingReason: String = ""
+    private var applyButton: Button?=null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,7 +68,7 @@ class AppliedGatePassBySelfUser : BaseActivity() {
 
         progressBar=findViewById(R.id.customProgressBar)
 
-        var applyButton=findViewById<Button>(R.id.applyGatePassButton)
+        applyButton=findViewById(R.id.applyGatePassButton)
         var recyclerView=findViewById<RecyclerView>(R.id.gatePassRecyclerView)
         recyclerView.layoutManager=androidx.recyclerview.widget.LinearLayoutManager(this)
         adapter= RecentPassAdapter("selfGatePass",ArrayList())
@@ -78,7 +79,7 @@ class AppliedGatePassBySelfUser : BaseActivity() {
         //get all gate pass
         getGatePass()
 
-        applyButton.setOnClickListener {
+        applyButton?.setOnClickListener {
             if(LoginUserDataHolder.loginUserData?.get("img")?.trim()==""){
                 Toast.makeText(this,"upload profile picture first",Toast.LENGTH_LONG).show()
                 return@setOnClickListener
@@ -107,6 +108,7 @@ class AppliedGatePassBySelfUser : BaseActivity() {
             if(reason.text.toString().trim()==""){
                 Toast.makeText(this,"Please enter reason",Toast.LENGTH_SHORT).show()
             }else{
+                dialogApplyButton.isEnabled=false
                 checkLocationAndApply(reason.text.toString().trim())
                 dialog.dismiss()
             }
@@ -149,6 +151,8 @@ class AppliedGatePassBySelfUser : BaseActivity() {
 
     private fun applyForGatePass(reason: String, latitude: String, longitude: String) {
 
+        progressBar?.startProgressBar()
+        applyButton?.isEnabled=false
         var callToApplyGatePass= RetrofitClient.instance.applyForGatePass(
             hashMapOf(
                 "reason" to reason,
@@ -163,6 +167,7 @@ class AppliedGatePassBySelfUser : BaseActivity() {
                 response: Response<HashMap<String, String>?>
             ) {
                 progressBar?.stopAnimation()
+                applyButton?.isEnabled=true
                 if(response.isSuccessful){
                     triggerSuccessAnimation(response.body()!!)
                 }else{
@@ -174,8 +179,8 @@ class AppliedGatePassBySelfUser : BaseActivity() {
                 call: Call<HashMap<String, String>?>,
                 t: Throwable
             ) {
-
                 progressBar?.stopAnimation()
+                applyButton?.isEnabled=true
                 Toast.makeText(this@AppliedGatePassBySelfUser,"Something went wrong",Toast.LENGTH_SHORT).show()
             }
         })
