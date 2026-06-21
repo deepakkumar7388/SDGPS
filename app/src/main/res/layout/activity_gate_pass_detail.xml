@@ -114,6 +114,14 @@
                         app:layout_constraintStart_toStartOf="@id/name"
                         app:layout_constraintTop_toBottomOf="@id/name" />
 
+                    <ImageView
+                        android:id="@+id/gatePassHistoryOfThisUser"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        app:layout_constraintEnd_toEndOf="@+id/name"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:srcCompat="@android:drawable/ic_menu_recent_history" />
+
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </com.google.android.material.card.MaterialCardView>
 

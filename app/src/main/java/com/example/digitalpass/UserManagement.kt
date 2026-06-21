@@ -53,6 +53,10 @@ class UserManagement : BaseActivity() {
                 } else {
                     var updatedUser =data?.getSerializableExtra("userUpdatedData") as HashMap<String, String>
                     memberList[position]=updatedUser
+                    //remove this user if this user not from this batch
+                    if(intent.getStringExtra("userManagementType")=="batch"){
+                        if(updatedUser["batch"]==intent?.getStringExtra("batchName"))memberList.removeAt(position)
+                    }
                     CoroutineScope(Dispatchers.IO).launch {
                         val newEmail = updatedUser["email"] ?: ""
                         if (newEmail.isNotEmpty()) {

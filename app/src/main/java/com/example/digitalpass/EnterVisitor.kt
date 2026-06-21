@@ -188,7 +188,7 @@ class EnterVisitor : BaseActivity() {
                 ) {
                     progressBar?.stopAnimation()
                     if (response.isSuccessful){
-                        memberList=response.body()!!
+                        memberList=response.body()?: ArrayList()
                         if(visitorData==null)adapter.updateList(memberList)
                         else{
                             //we have to find only one user from memberList where member email==visitorData meetEmail
@@ -326,13 +326,6 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
         //gone the visibility of otherInfo
         otherInfo.visibility=View.GONE
 
-        //select reception by default
-        if(selectedMember==null){
-            var receptionPosition=memberList.indexOfFirst { it["role"]=="reception" }
-            if(receptionPosition!=-1)selectedMember=memberList[receptionPosition]
-            else Toast.makeText(this,"Please select member",Toast.LENGTH_SHORT).show()
-        }
-
         enterVisitorButton.setOnClickListener {
             //check all the fields are filled
             if(multipartImage==null||
@@ -342,6 +335,16 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
                 reason.text.toString()==""){
                 Toast.makeText(this, "Please fill all the fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
+            }
+
+            //select reception by default
+            if(selectedMember==null){
+                var receptionPosition=memberList.indexOfFirst { it["role"]=="reception" }
+                if(receptionPosition!=-1)selectedMember=memberList[receptionPosition]
+                else{
+                    Toast.makeText(this,"Please select member",Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
             }
 
             progressBar?.startProgressBar()
@@ -474,7 +477,10 @@ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) 
         if(selectedMember==null){
             var receptionPosition=memberList.indexOfFirst { it["role"]=="reception" }
             if(receptionPosition!=-1)selectedMember=memberList[receptionPosition]
-            else Toast.makeText(this,"Please select member",Toast.LENGTH_SHORT).show()
+            else{
+                Toast.makeText(this,"Please select member",Toast.LENGTH_SHORT).show()
+                return
+            }
         }
 
             if(name.text.toString()==""||

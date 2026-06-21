@@ -33,12 +33,7 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.core.app.ActivityCompat
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
+
 
 class Student : BaseActivity() {
     private lateinit var galleryLauncher: ActivityResultLauncher<String>
@@ -47,8 +42,6 @@ class Student : BaseActivity() {
     private var gatePassList= arrayListOf<HashMap<String,String>>()
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
 
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private var pendingReason: String = ""
 
     private var progressBar: CustomProgressBar?=null
     private var applyButton:Button?=null
@@ -112,7 +105,6 @@ class Student : BaseActivity() {
         //get all gate pass
         getGatePass()
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         //apply for gate pass
         applyButton=findViewById<Button>(R.id.applyForGatePass)
@@ -151,37 +143,16 @@ class Student : BaseActivity() {
     }
 
     private fun checkLocationAndApply(reason: String) {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            pendingReason = reason
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1001)
-            return
-        }
-
         progressBar?.startProgressBar()
         applyButton?.isEnabled=false
-        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
+        
+        requestUserLocation { location ->
             if (location != null) {
                 applyForGatePass(reason, location.latitude.toString(), location.longitude.toString())
             } else {
                 progressBar?.stopAnimation()
                 applyButton?.isEnabled=true
                 Toast.makeText(this, "Unable to get location. Please ensure GPS is enabled.", Toast.LENGTH_SHORT).show()
-            }
-        }.addOnFailureListener {
-            progressBar?.stopAnimation()
-            applyButton?.isEnabled=true
-            Toast.makeText(this, "Failed to get location.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1001) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                checkLocationAndApply(pendingReason)
-            } else {
-                Toast.makeText(this, "Location permission is required to apply for gate pass", Toast.LENGTH_SHORT).show()
             }
         }
     }

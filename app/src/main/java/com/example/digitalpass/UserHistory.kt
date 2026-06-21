@@ -59,6 +59,7 @@ class UserHistory : BaseActivity() {
     )
 
     private var statusSpinner: Spinner?=null
+    private var departmentSpinner: Spinner?=null
     lateinit var dateFromButton:MaterialButton
     lateinit var dateToButton:MaterialButton
 
@@ -222,9 +223,36 @@ class UserHistory : BaseActivity() {
             }
         }
 
-        statusSpinner=findViewById(R.id.spinner)
+        departmentSpinner=findViewById(R.id.spinnerDepartment)
+        statusSpinner=findViewById(R.id.spinnerStatus)
         statusSpinner?.adapter=ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, statusList)
+
         setupStatusSpinner()
+
+        getAllDepartment()
+    }
+
+    private fun getAllDepartment(){
+        RetrofitClient.instance.getAllDepartment().enqueue(object : Callback<ArrayList<String>>{
+            override fun onResponse(
+                call: Call<ArrayList<String>?>,
+                response: Response<ArrayList<String>?>
+            ) {
+                if(response.isSuccessful){
+                    var departmentList=response.body()?:ArrayList()
+                    departmentList.add(0,"All Department")
+                    departmentSpinner?.adapter=ArrayAdapter(this@UserHistory, android.R.layout.simple_spinner_dropdown_item, departmentList)
+                }
+            }
+
+            override fun onFailure(
+                call: Call<ArrayList<String>?>,
+                t: Throwable
+            ) {
+                Toast.makeText(this@UserHistory, "Something went wrong", Toast.LENGTH_SHORT).show()
+                departmentSpinner?.adapter=ArrayAdapter(this@UserHistory, android.R.layout.simple_spinner_dropdown_item, arrayListOf("All Department"))
+            }
+        })
     }
 
     private fun updateButtonStyles(isVisitor: Boolean) {
@@ -331,32 +359,40 @@ class UserHistory : BaseActivity() {
 
     private fun filterWithQuery(query: String) {
         if (toggleGroup.checkedButtonId == R.id.visitorListButton){
-            val temVisitorList = ArrayList(dateVisitorList.filter { 
+            var temVisitorList = ArrayList(dateVisitorList.filter {
                 (it["name"] ?: "").contains(query, ignoreCase = true) 
             })
-            if (statusSpinner?.selectedItemPosition == 0) {
+            if (statusSpinner?.selectedItemPosition != 0) {
+                val selectedStatus = statusSpinner?.selectedItem?.toString() ?: ""
+                temVisitorList= ArrayList(temVisitorList.filter {
+                    (it["status"] ?: "").contains(selectedStatus, ignoreCase = true)
+                })
+            }
+            if(departmentSpinner?.selectedItemPosition!=0){
+                temVisitorList= ArrayList(temVisitorList.filter {
+                    (it["meetDepartment"] ?: "").contains(departmentSpinner?.selectedItem.toString(), ignoreCase = true)
+                })
+            }
                 visitorAdapter.updateList(temVisitorList)
-            } else {
-                val selectedStatus = statusSpinner?.selectedItem?.toString() ?: ""
-                val filtered = ArrayList(temVisitorList.filter { 
-                    (it["status"] ?: "").contains(selectedStatus, ignoreCase = true) 
-                })
-                visitorAdapter.updateList(filtered)
-            }
+
         }
+
         else{
-            val temGatePassList = ArrayList(dateGatePassList.filter { 
+            var temGatePassList = ArrayList(dateGatePassList.filter {
                 (it["name"] ?: "").contains(query, ignoreCase = true) 
             })
-            if (statusSpinner?.selectedItemPosition == 0) {
-                gatePassAdapter.updateList(temGatePassList)
-            } else {
+            if (statusSpinner?.selectedItemPosition != 0) {
                 val selectedStatus = statusSpinner?.selectedItem?.toString() ?: ""
-                val filtered = ArrayList(temGatePassList.filter { 
-                    (it["status"] ?: "").contains(selectedStatus, ignoreCase = true) 
+                temGatePassList = ArrayList(temGatePassList.filter {
+                    (it["status"] ?: "").contains(selectedStatus, ignoreCase = true)
                 })
-                gatePassAdapter.updateList(filtered)
             }
+            if(departmentSpinner?.selectedItemPosition!=0){
+                temGatePassList= ArrayList(temGatePassList.filter {
+                    (it["department"] ?: "").contains(departmentSpinner?.selectedItem.toString(), ignoreCase = true)
+                })
+            }
+                gatePassAdapter.updateList(temGatePassList)
         }
     }
 
@@ -440,6 +476,21 @@ class UserHistory : BaseActivity() {
                 
             }
         }
+
+        departmentSpinner?.onItemSelectedListener=object: AdapterView.OnItemSelectedListener{
+            override fun onItemSelected(
+                p0: AdapterView<*>?,
+                p1: View?,
+                p2: Int,
+                p3: Long
+            ) {
+                filterWithQuery(search?.query.toString())
+            }
+
+            override fun onNothingSelected(p0: AdapterView<*>?) {
+
+            }
+        }
     }
 
     private fun showDialogDownloadInformation() {
@@ -460,7 +511,4 @@ class UserHistory : BaseActivity() {
         }
     }
 
-    override fun onResume(){
-        super.onResume()
-    }
 }

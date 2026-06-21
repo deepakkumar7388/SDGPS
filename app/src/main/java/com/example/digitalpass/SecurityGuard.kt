@@ -115,6 +115,11 @@ class SecurityGuard : BaseActivity() {
             startActivity(Intent(this, UserHistory::class.java))
         }
 
+        val reportFloatingButton = findViewById<FloatingActionButton>(R.id.reportFloatingButton)
+        reportFloatingButton.setOnClickListener {
+            startActivity(Intent(this, ReportActivity::class.java))
+        }
+
         //check this security guard allotted or not
         checkPermissionOfSecurityGuard()
 

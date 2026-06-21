@@ -111,6 +111,11 @@ class Reception : BaseActivity() {
             startActivity(Intent(this, UserHistory::class.java))
         }
 
+        val reportFloatingButton = findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.reportFloatingButton)
+        reportFloatingButton.setOnClickListener {
+            startActivity(Intent(this, ReportActivity::class.java))
+        }
+
         searchBar=findViewById<SearchView>(R.id.receptionRecentSearch)
         //setup search bar
         setupSearchBar()

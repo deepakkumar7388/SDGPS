@@ -222,6 +222,19 @@
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/reportFloatingButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="32dp"
+            android:layout_marginBottom="100dp"
+            android:clickable="true"
+            app:backgroundTint="#EF4444"
+            app:elevation="6dp"
+            app:srcCompat="@android:drawable/ic_dialog_alert"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/enterVisitorButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

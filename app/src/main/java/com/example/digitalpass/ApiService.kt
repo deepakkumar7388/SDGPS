@@ -166,4 +166,19 @@ interface ApiService {
 
     @POST("/create-campus-location")
     fun createCampusLocation(@Body campusLocationData: HashMap<String, Any>): Call<ResponseBody>
+
+    @POST("/get-reports")
+    fun getReports(@Body token: String): Call<ArrayList<HashMap<String, String>>>
+
+    @Multipart
+    @POST("/add-report")
+    fun addReport(
+        @Part("department") department: RequestBody,
+        @Part("reportDescription") reportDescription: RequestBody,
+        @Part("token") token: RequestBody,
+        @Part file: MultipartBody.Part?
+    ): Call<HashMap<String,String>>
+
+    @POST("/get-all-department")
+    fun getAllDepartment(): Call<ArrayList<String>>
 }
