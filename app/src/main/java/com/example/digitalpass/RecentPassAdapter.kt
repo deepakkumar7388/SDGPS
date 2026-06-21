@@ -12,13 +12,15 @@ import com.bumptech.glide.Glide
 class RecentPassAdapter(var listType:String,var recentPassList:ArrayList<HashMap<String,String>>) :
     RecyclerView.Adapter<RecentPassAdapter.ViewHolder>() {
 
-        var listTypeByDate="recent"
+    var listTypeByDate="recent"
+    var onItemClick: ((HashMap<String, String>) -> Unit)? = null
 
-        class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-            var imageView=itemView.findViewById<ImageView>(R.id.memberImage)
-            var name=itemView.findViewById<TextView>(R.id.memberName)
-            var status=itemView.findViewById<TextView>(R.id.memberRole)
-            var itemLayout=itemView.findViewById<View>(R.id.historyItemCompleteLayout)
+    class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        var imageView=itemView.findViewById<ImageView>(R.id.memberImage)
+        var name=itemView.findViewById<TextView>(R.id.memberName)
+        var status=itemView.findViewById<TextView>(R.id.memberRole)
+        var applyDateTime=itemView.findViewById<TextView>(R.id.applyDateTime)
+        var itemLayout=itemView.findViewById<View>(R.id.historyItemCompleteLayout)
     }
 
     override fun onCreateViewHolder(
@@ -33,13 +35,22 @@ class RecentPassAdapter(var listType:String,var recentPassList:ArrayList<HashMap
     override fun onBindViewHolder(holder: RecentPassAdapter.ViewHolder, position: Int) {
         holder.name.text=recentPassList[position]["name"]
         holder.status.text=recentPassList[position]["status"]
+        holder.applyDateTime.visibility=View.VISIBLE
+        if(listType=="visitor")holder.applyDateTime.text=recentPassList[position]["entryDate"]
+        else holder.applyDateTime.text=recentPassList[position]["applyDate"]
         if(recentPassList[position]["img"]?.trim()!="")
             Glide.with(holder.imageView.context).load(LoginUserDataHolder.getURL(recentPassList[position]["img"])).into(holder.imageView)
         else{
             Glide.with(holder.imageView.context).load(R.drawable.user_icon).into(holder.imageView)
         }
 
+
         holder.itemLayout.setOnClickListener {
+            if (onItemClick != null) {
+                onItemClick?.invoke(recentPassList[position])
+                return@setOnClickListener
+            }
+
             if(listType=="visitor") {
                 var intent = Intent(holder.itemView.context, EnterVisitor::class.java)
                 var visitorHash=HashMap(recentPassList[position])

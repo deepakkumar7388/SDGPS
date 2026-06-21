@@ -344,11 +344,11 @@ class UserManagementViewUser : BaseActivity() {
 
         progressBar?.startProgressBar()
         doneButton.isEnabled=false
+        var hashMap=HashMap<String,Any>()
+        hashMap.put("removeEmails",listOf(user["email"]?:return))
+        hashMap.put("token",LoginUserDataHolder.token)
         CoroutineScope(Dispatchers.IO).launch {
-            val call = RetrofitClient.instance.removeUser(hashMapOf(
-                "removeEmail" to user["email"]!!,
-                "token" to LoginUserDataHolder.token
-            ))
+            val call = RetrofitClient.instance.removeUser(hashMap)
             call.enqueue(object : Callback<ResponseBody> {
                 override fun onResponse(
                     call: Call<ResponseBody?>,

@@ -15,9 +15,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.common.internal.service.Common
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -34,6 +36,7 @@ class UserManagement : BaseActivity() {
       var memberList=ArrayList<HashMap<String,String>>()
 
     private var progressBar: CustomProgressBar?=null
+    private lateinit var deleteUserButton: FloatingActionButton
 
     lateinit var toolbar: androidx.appcompat.widget.Toolbar
 
@@ -100,7 +103,11 @@ class UserManagement : BaseActivity() {
 
         toolbar = findViewById(R.id.toolbar)
         toolbar.setNavigationOnClickListener {
-            finish()
+            if (adapter.isSelectionMode) {
+                adapter.clearSelection()
+            } else {
+                finish()
+            }
         }
         toolbar.inflateMenu(R.menu.menu_user_management)
         toolbar.setOnMenuItemClickListener { item ->
@@ -114,18 +121,35 @@ class UserManagement : BaseActivity() {
         }
 
         progressBar=findViewById(R.id.customProgressBar)
+        deleteUserButton=findViewById(R.id.deleteUserButton)
 
         searchView = findViewById(R.id.userManagementSearch)
         membersRecyclerView = findViewById(R.id.recyclerViewUserManagement)
         membersRecyclerView.layoutManager = LinearLayoutManager(this)
 
-        adapter = UserManagementAdapter(ArrayList<HashMap<String,String>>()){ userItem->
+        adapter = UserManagementAdapter(ArrayList<HashMap<String,String>>(), { selectedCount ->
+            updateSelectionUI(selectedCount)
+        }) { userItem->
             var intent= Intent(this, UserManagementViewUser::class.java).apply{
                 putExtra("user",userItem)
             }
             activityResultFromUserView.launch(intent)
         }
         membersRecyclerView.adapter = adapter
+
+        deleteUserButton.setOnClickListener {
+            val selectedUsers = adapter.getSelectedUsers()
+            if (selectedUsers.isNotEmpty()) {
+                androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Delete Users")
+                    .setMessage("Are you sure you want to delete ${selectedUsers.size} user(s)?")
+                    .setPositiveButton("Yes") { _, _ ->
+                        removeMultipleUsers(selectedUsers)
+                    }
+                    .setNegativeButton("No", null)
+                    .show()
+            }
+        }
 
         setupSearchView()
         setupToggleGroup()
@@ -274,5 +298,68 @@ class UserManagement : BaseActivity() {
         })
     }
 
+    private fun updateSelectionUI(selectedCount: Int) {
+        if (selectedCount > 0) {
+            toolbar.title = "$selectedCount Selected"
+            deleteUserButton.visibility = android.view.View.VISIBLE
+        } else {
+            var batchName=intent?.getStringExtra("batchName")
+            if(batchName!=null){
+                toolbar.title="User Management\n$batchName"
+            } else {
+                toolbar.title="User Management"
+            }
+            deleteUserButton.visibility = android.view.View.GONE
+        }
+    }
 
+    private fun removeMultipleUsers(users: List<HashMap<String, String>>) {
+        progressBar?.startProgressBar()
+        val emails = users.mapNotNull { it["email"] }
+        
+        val map = HashMap<String, Any>()
+        map["token"] = LoginUserDataHolder.token
+        map["removeEmails"] = emails
+
+        CoroutineScope(Dispatchers.IO).launch {
+            RetrofitClient.instance.removeUser(map).enqueue(object : Callback<ResponseBody> {
+                override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                    runOnUiThread { progressBar?.stopAnimation() }
+                    if (response.isSuccessful) {
+                        runOnUiThread {
+                            Toast.makeText(this@UserManagement, "Users removed successfully", Toast.LENGTH_SHORT).show()
+                            memberList.removeAll(users)
+                            adapter.clearSelection()
+                            filterMembers()
+                        }
+                        CoroutineScope(Dispatchers.IO).launch {
+                            emails.forEach { email ->
+                                database.userDao().deleteUserByEmail(email)
+                            }
+                        }
+                    } else {
+                        val errorMessage = LoginUserDataHolder.getErrorMessage(response)
+                        runOnUiThread {
+                            Toast.makeText(this@UserManagement, errorMessage, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+
+                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                    runOnUiThread { progressBar?.stopAnimation() }
+                    runOnUiThread {
+                        Toast.makeText(this@UserManagement, "Failed to remove users: ${t.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            })
+        }
+    }
+
+    override fun onBackPressed() {
+        if (adapter.isSelectionMode) {
+            adapter.clearSelection()
+        } else {
+            super.onBackPressed()
+        }
+    }
 }

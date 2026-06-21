@@ -12,13 +12,14 @@
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#052E92"
+        android:background="#00000000"
         app:layout_constraintTop_toTopOf="parent">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            android:background="@drawable/appbar_gradient_bg"
             app:navigationIcon="?attr/homeAsUpIndicator"
             app:navigationIconTint="#FFFFFF"
             app:title="Gate Pass Details"
@@ -113,14 +114,6 @@
                         app:layout_constraintBottom_toBottomOf="@id/imageCard"
                         app:layout_constraintStart_toStartOf="@id/name"
                         app:layout_constraintTop_toBottomOf="@id/name" />
-
-                    <ImageView
-                        android:id="@+id/gatePassHistoryOfThisUser"
-                        android:layout_width="50dp"
-                        android:layout_height="50dp"
-                        app:layout_constraintEnd_toEndOf="@+id/name"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@android:drawable/ic_menu_recent_history" />
 
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -330,7 +323,56 @@
                         android:text="Description text goes here..."
                         android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                         android:textColor="#636E72"
-                        android:visibility="visible" />
+                        android:visibility="gone" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/gatePassHistoryCardView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="1dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <LinearLayout
+                        android:id="@+id/previousGatePassLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@android:drawable/ic_menu_recent_history"
+                            app:tint="#2D3436" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Previous Gate Passes"
+                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                            android:textColor="#2D3436" />
+                    </LinearLayout>
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/previousGatePassRecyclerView"
+                        android:layout_width="match_parent"
+                        android:layout_height="300dp"
+                        android:layout_marginTop="12dp"
+                        android:visibility="gone"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

@@ -19,7 +19,7 @@ open class BaseActivity : AppCompatActivity() {
     private var locationCallback: ((Location?) -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Run the session guard BEFORE super.onCreate so nothing in the
+        // Run the session guard before super.onCreate so nothing in the
         // subclass can touch LoginUserDataHolder while it is still empty.
         restoreSessionIfNeeded()
         super.onCreate(savedInstanceState)

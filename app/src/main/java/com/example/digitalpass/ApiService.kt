@@ -50,7 +50,7 @@ interface ApiService {
     fun getMembersForUserManagement(@Body loginData: String): Call<ArrayList<HashMap<String,String>>>
 
     @POST("/remove-user")
-    fun removeUser(@Body hashToRemoveUser: HashMap<String, String>): Call<ResponseBody>
+    fun removeUser(@Body hashToRemoveUser: HashMap<String,Any>): Call<ResponseBody>
 
     @POST("/edit-user")
     fun editUser(@Body editedUser: HashMap<String, String>): Call<ResponseBody>
@@ -170,6 +170,9 @@ interface ApiService {
     @POST("/get-reports")
     fun getReports(@Body token: String): Call<ArrayList<HashMap<String, String>>>
 
+    @POST("/remove-report")
+    fun removeReport(@Body hashToRemoveReport: HashMap<String, Any>): Call<ResponseBody>
+
     @Multipart
     @POST("/add-report")
     fun addReport(
@@ -181,4 +184,7 @@ interface ApiService {
 
     @POST("/get-all-department")
     fun getAllDepartment(): Call<ArrayList<String>>
+
+    @POST("get-previous-gate-passes-of-user")
+    fun getPreviousGatePassesOfUser(@Body email: String): Call<ArrayList<HashMap<String,String>>>
 }

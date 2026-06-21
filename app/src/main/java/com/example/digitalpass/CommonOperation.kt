@@ -36,7 +36,7 @@ import java.io.File
 
 object CommonOperation {
 
-    val versionId="6"
+    val versionId="7"
     var logoutButton: MaterialButton?=null
     fun setupUserProfile(activity: Activity) {
 

@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -14,9 +15,11 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +40,8 @@ class GatePassDetail : BaseActivity() {
 
     private var progressBar: CustomProgressBar?=null
     private var reject: MaterialButton?=null
+    private var previousGatePassList:ArrayList<HashMap<String,String>>?=null
+    private var recyclerView: RecyclerView?=null
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,6 +89,8 @@ class GatePassDetail : BaseActivity() {
         approve=findViewById(R.id.approveButton)
         var tgRemarkLayout=findViewById<TextInputLayout>(R.id.tgRemarkInputLayout)
         tgRemark=findViewById(R.id.tgRemark)
+        var previousGatePassLayout=findViewById<LinearLayout>(R.id.previousGatePassLayout)
+        recyclerView=findViewById(R.id.previousGatePassRecyclerView)
 
         gatePass= (intent.getSerializableExtra("gatePass") as? HashMap<String,String>)!!
 
@@ -95,6 +102,7 @@ class GatePassDetail : BaseActivity() {
         }
 
         if(intent.getStringExtra("operationType")=="self"){
+            findViewById<MaterialCardView>(R.id.gatePassHistoryCardView).visibility=View.GONE
             reject?.visibility= View.GONE
             callIcon.visibility=View.GONE
 
@@ -129,6 +137,12 @@ class GatePassDetail : BaseActivity() {
                     if (approve.text == "Approve") approveGatePass()
                     else editGatePass()
                 }
+            }
+
+            previousGatePassLayout.setOnClickListener {
+                if(recyclerView?.visibility==View.GONE)recyclerView?.visibility=View.VISIBLE
+                else recyclerView?.visibility=View.GONE
+                if(previousGatePassList==null)getPreviousGatePass()
             }
         }
 
@@ -174,6 +188,59 @@ class GatePassDetail : BaseActivity() {
             editButton.visibility=View.GONE
         }
 
+    }
+
+    private fun getPreviousGatePass(){
+        progressBar?.startProgressBar()
+        RetrofitClient.instance.getPreviousGatePassesOfUser(gatePass["applyEmail"]!!).enqueue(object : Callback<ArrayList<HashMap<String,String>>>{
+            override fun onResponse(
+                call: Call<ArrayList<HashMap<String, String>>?>,
+                response: Response<ArrayList<HashMap<String, String>>?>
+            ) {
+                progressBar?.stopAnimation()
+                if(response.isSuccessful){
+                    previousGatePassList = response.body()?:ArrayList()
+                    var adapter = RecentPassAdapter("gatePass", previousGatePassList!!)
+                    adapter.listTypeByDate = "previous_gate_pass_history"
+                    adapter.onItemClick = { clickedGatePass ->
+                        showPreviousGatePassDialog(clickedGatePass)
+                    }
+                    recyclerView?.adapter = adapter
+                }
+                else Toast.makeText(this@GatePassDetail, LoginUserDataHolder.getErrorMessage(response),Toast.LENGTH_LONG).show()
+            }
+
+            override fun onFailure(
+                call: Call<ArrayList<HashMap<String, String>>?>,
+                t: Throwable
+            ) {
+                progressBar?.stopAnimation()
+                Toast.makeText(this@GatePassDetail, "Something went wrong",Toast.LENGTH_LONG).show()
+            }
+        })
+    }
+
+    private fun showPreviousGatePassDialog(passInfo: HashMap<String, String>) {
+        val message = StringBuilder()
+        message.append("Date & Time: ${passInfo["applyDate"] ?: "N/A"}\n\n")
+        message.append("Status: ${passInfo["status"] ?: "N/A"}\n\n")
+        if (!passInfo["campus"].isNullOrBlank()) {
+            message.append("Campus: ${passInfo["campus"]}\n\n")
+        }
+        message.append("Reason: ${passInfo["reason"] ?: "N/A"}\n\n")
+        
+        if (!passInfo["tgRemark"].isNullOrBlank()) {
+            message.append("TG Remark: ${passInfo["tgRemark"]}\n\n")
+            }
+        if (!passInfo["remark"].isNullOrBlank()) {
+            message.append("Remarks: ${passInfo["remark"]}\n\n")
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Gate Pass Details")
+            .setMessage(message.toString().trim())
+            .setPositiveButton("Close") { dialog, _ -> dialog.dismiss() }
+            .show()
     }
 
     private fun getOtherInfoDescription(){

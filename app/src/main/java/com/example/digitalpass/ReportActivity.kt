@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import okhttp3.ResponseBody
+import androidx.appcompat.app.AlertDialog
 
 class ReportActivity : BaseActivity() {
 
@@ -26,6 +28,8 @@ class ReportActivity : BaseActivity() {
     private lateinit var reportAdapter: ReportAdapter
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var customProgressBar: CustomProgressBar
+    private lateinit var addReportButton: FloatingActionButton
+    private lateinit var deleteReportButton: FloatingActionButton
     private val reportList = ArrayList<HashMap<String, String>>()
 
     var addReportActivityResult=registerForActivityResult(ActivityResultContracts.StartActivityForResult()){
@@ -33,8 +37,8 @@ class ReportActivity : BaseActivity() {
         if(result.resultCode== RESULT_OK){
             var resultData=result.data
             var report=resultData?.getSerializableExtra("report") as HashMap<String,String>
-            reportList.add(report)
-            reportAdapter.notifyItemInserted(reportList.size-1)
+            reportList.add(0,report)
+            reportAdapter.notifyItemInserted(0)
         }
     }
 
@@ -49,7 +53,11 @@ class ReportActivity : BaseActivity() {
         supportActionBar?.title = "Reports"
 
         toolbar.setNavigationOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
+            if (reportAdapter.isSelectionMode) {
+                reportAdapter.clearSelection()
+            } else {
+                onBackPressedDispatcher.onBackPressed()
+            }
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -61,11 +69,13 @@ class ReportActivity : BaseActivity() {
         recyclerView = findViewById(R.id.recyclerView)
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
         customProgressBar = findViewById(R.id.customProgressBar)
-
-        val addReportButton = findViewById<FloatingActionButton>(R.id.addReportButton)
+        addReportButton = findViewById(R.id.addReportButton)
+        deleteReportButton = findViewById(R.id.deleteReportButton)
 
         recyclerView.layoutManager = LinearLayoutManager(this)
-        reportAdapter = ReportAdapter(reportList)
+        reportAdapter = ReportAdapter(reportList) { selectedCount ->
+            updateSelectionUI(selectedCount)
+        }
         recyclerView.adapter = reportAdapter
 
         swipeRefreshLayout.setOnRefreshListener {
@@ -77,7 +87,33 @@ class ReportActivity : BaseActivity() {
             addReportActivityResult.launch(Intent(this, AddReportActivity::class.java))
         }
 
+        deleteReportButton.setOnClickListener {
+            val selectedReports = reportAdapter.getSelectedReports()
+            if (selectedReports.isNotEmpty()) {
+                AlertDialog.Builder(this)
+                    .setTitle("Delete Reports")
+                    .setMessage("Are you sure you want to delete ${selectedReports.size} report(s)?")
+                    .setPositiveButton("Yes") { _, _ ->
+                        removeMultipleReports(selectedReports)
+                    }
+                    .setNegativeButton("No", null)
+                    .show()
+            }
+        }
+
         getReports()
+    }
+
+    private fun updateSelectionUI(selectedCount: Int) {
+        if (selectedCount > 0) {
+            supportActionBar?.title = "$selectedCount Selected"
+            addReportButton.visibility = View.GONE
+            deleteReportButton.visibility = View.VISIBLE
+        } else {
+            supportActionBar?.title = "Reports"
+            addReportButton.visibility = View.VISIBLE
+            deleteReportButton.visibility = View.GONE
+        }
     }
 
     private fun getReports() {
@@ -93,6 +129,7 @@ class ReportActivity : BaseActivity() {
                         if (response.isSuccessful) {
                             reportList.clear()
                             response.body()?.let { reportList.addAll(it) }
+                            reportAdapter.clearSelection()
                             reportAdapter.notifyDataSetChanged()
                         } else {
                             Toast.makeText(this@ReportActivity, "Failed to load reports", Toast.LENGTH_SHORT).show()
@@ -104,11 +141,46 @@ class ReportActivity : BaseActivity() {
                         t: Throwable
                     ) {
                         customProgressBar.stopAnimation()
-                        // Since backend may not exist yet, we don't spam errors
-                        // Toast.makeText(this@ReportActivity, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@ReportActivity, "Failed to load reports", Toast.LENGTH_SHORT).show()
                     }
                 })
         }
     }
 
+    private fun removeMultipleReports(reports: List<HashMap<String, String>>) {
+        customProgressBar.startProgressBar()
+        val reportIds = reports.mapNotNull { it["reportId"] }
+        
+        val map = HashMap<String, Any>()
+        map["token"] = LoginUserDataHolder.token
+        map["reportIds"] = reportIds
+
+        CoroutineScope(Dispatchers.IO).launch {
+            RetrofitClient.instance.removeReport(map).enqueue(object : Callback<ResponseBody> {
+                override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                    customProgressBar.stopAnimation()
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@ReportActivity, "Reports removed successfully", Toast.LENGTH_SHORT).show()
+                        reportList.removeAll(reports)
+                        reportAdapter.clearSelection()
+                    } else {
+                        Toast.makeText(this@ReportActivity, "Failed to remove reports", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                    customProgressBar.stopAnimation()
+                    Toast.makeText(this@ReportActivity, "Failed to remove reports: ${t.message}", Toast.LENGTH_SHORT).show()
+                }
+            })
+        }
+    }
+
+    override fun onBackPressed() {
+        if (reportAdapter.isSelectionMode) {
+            reportAdapter.clearSelection()
+        } else {
+            super.onBackPressed()
+        }
+    }
 }

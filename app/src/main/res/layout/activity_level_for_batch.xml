@@ -12,13 +12,14 @@
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#052E92"
+        android:background="#00000000"
         app:layout_constraintTop_toTopOf="parent">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            android:background="@drawable/appbar_gradient_bg"
             app:navigationIcon="?attr/homeAsUpIndicator"
             app:navigationIconTint="#FFFFFF"
             app:title="Select Approvers"
