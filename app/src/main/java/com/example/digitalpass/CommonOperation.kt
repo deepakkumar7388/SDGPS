@@ -151,7 +151,25 @@ object CommonOperation {
             }
             logoutButton=activity.findViewById<com.google.android.material.button.MaterialButton>(R.id.logoutButton)
             logoutButton?.setOnClickListener {
-                logout(activity)
+                //make a dialog box for logout options
+                val options = arrayOf("Logout from this device", "Logout from all devices")
+                android.app.AlertDialog.Builder(activity)
+                    .setTitle("Logout Options")
+                    .setItems(options) { _, which ->
+                        val logoutType = if (which == 0) "thisUser" else "allUser"
+                        val message = if (which == 0) "Are you sure you want to logout from this device?" else "Are you sure you want to logout from ALL devices?"
+                        
+                        android.app.AlertDialog.Builder(activity)
+                            .setTitle("Confirm Logout")
+                            .setMessage(message)
+                            .setPositiveButton("Yes") { _, _ ->
+                                logout(activity, logoutType)
+                            }
+                            .setNegativeButton("No", null)
+                            .show()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
             }
         }
 
@@ -221,10 +239,13 @@ object CommonOperation {
 
 
     //logOut the user by socket disconnecting,remove token and remove fcm token
-    fun logout(context:Context) {
+    fun logout(context:Context, logoutType: String) {
         logoutButton?.isEnabled=false
+        val logoutData = HashMap<String, String>()
+        logoutData["token"] = token
+        logoutData["logoutType"] = logoutType
         //first we have to remove fcm token from database
-        var callToLogout= RetrofitClient.instance.logout(token)
+        var callToLogout= RetrofitClient.instance.logout(logoutData)
         callToLogout.enqueue(object : Callback<ResponseBody> {
             override fun onResponse(
                 call: Call<ResponseBody?>,

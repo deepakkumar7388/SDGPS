@@ -11,6 +11,7 @@ import MyGatePass from './MyGatePass';
 import EnterVisitorModal from './EnterVisitorModal';
 import CampusLocation from './CampusLocation';
 import AppUpdate from './AppUpdate';
+import ReportManagement from './ReportManagement';
 
 // Helper: checks if applyDate is today (so actions are enabled)
 const isToday = (dateStr) => {
@@ -667,6 +668,9 @@ const DashboardContent = ({
             <button className={`btn ${activeTab === 'GatePass' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('GatePass')}>Gate Passes</button>
           )}
           <button className={`btn ${activeTab === 'Visitors' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('Visitors')}>Visitors</button>
+          {userRole?.toLowerCase() !== 'student' && (
+            <button className={`btn ${activeTab === 'Reports' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('Reports')}>Reports</button>
+          )}
         </div>
         <button 
           onClick={toggleTheme} 
@@ -678,6 +682,9 @@ const DashboardContent = ({
         </button>
       </div>
 
+      {activeTab === 'Reports' ? (
+        <ReportManagement getImageUrl={getImageUrl} />
+      ) : (
       <div className="page-content animate-fade-in">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h3 style={{ margin: 0 }}>Recent {activeTab === 'GatePass' ? 'Gate Passes' : 'Visitors'}</h3>
@@ -750,6 +757,7 @@ const DashboardContent = ({
           </div>
         )}
       </div>
+      )}
 
       {/* Gate Pass Detail Modal */}
       {selectedGatePass && (
@@ -1130,10 +1138,13 @@ const Dashboard = ({ onLogout }) => {
       let data = [];
       if (activeTab === 'GatePass') {
         data = await getRecentGatePassList(token);
-      } else {
+      } else if (activeTab === 'Visitors') {
         data = await getRecentVisitorList(token);
       }
-      setDataList(data || []);
+      
+      if (activeTab !== 'Reports') {
+        setDataList(data || []);
+      }
     } catch (error) {
       console.error(`Error fetching ${activeTab}:`, error);
     } finally {

@@ -92,7 +92,7 @@ class MainActivity : AppCompatActivity() {
                                 LoginUserDataHolder.saveState(this@MainActivity)
                                 LoginUserDataHolder.storeFCMToken()
                                 createNotificationChannel()
-                                savePasswordToGoogleManager(emailSt, passwordSt)
+                                getPermission()
                             }
                         }
                     } else {
@@ -379,22 +379,6 @@ class MainActivity : AppCompatActivity() {
             startActivity(it)
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
             finish()
-        }
-    }
-
-    private fun savePasswordToGoogleManager(emailSt: String, passwordSt: String) {
-        val credentialManager = CredentialManager.create(this)
-        val request = CreatePasswordRequest(emailSt, passwordSt)
-        
-        CoroutineScope(Dispatchers.Main).launch {
-            try {
-                credentialManager.createCredential(this@MainActivity, request)
-                Log.d("CredentialManager", "Password saved successfully")
-            } catch (e: Exception) {
-                Log.e("CredentialManager", "Failed to save password", e)
-            } finally {
-                getPermission()
-            }
         }
     }
 

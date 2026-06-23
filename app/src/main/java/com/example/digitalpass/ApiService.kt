@@ -144,7 +144,7 @@ interface ApiService {
     fun getRecentUpdatedGatePass(@Body hashToGetRecentUpdatedGatePass: HashMap<String, String>): Call<HashMap<String, String>>
 
     @POST("/logout")
-    fun logout(@Body token: String): Call<ResponseBody>
+    fun logout(@Body logoutData: HashMap<String, String>): Call<ResponseBody>
 
     @POST("/get-visitor-list-history")
     fun getVisitorListHistory(@Body hashToGetVisitorListHistory: HashMap<String, String>): Call<ArrayList<HashMap<String, String>>>
