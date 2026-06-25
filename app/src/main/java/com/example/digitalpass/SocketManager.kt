@@ -11,6 +11,13 @@ object SocketManager {
      lateinit var socket: Socket
 
     fun connect() {
+        if (::socket.isInitialized) {
+            if (!socket.connected()) {
+                socket.connect()
+            }
+            return
+        }
+
         val options = IO.Options.builder()
             .setTransports(arrayOf(WebSocket.NAME)) // FORCE WEBSOCKET ONLY
             .setReconnection(true)
@@ -18,10 +25,9 @@ object SocketManager {
 
         socket = IO.socket(RetrofitClient.BASE_URL, options)
         socket.connect()
+        
+        // This event fires on the initial connection and also automatically upon successful reconnection
         socket.on(Socket.EVENT_CONNECT) {
-            joinRoom()
-        }
-        socket.on(Manager.EVENT_RECONNECT){
             joinRoom()
         }
 

@@ -24,6 +24,9 @@ import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import android.view.animation.AnimationUtils
+import android.widget.FrameLayout
+import com.example.digitalpass.database.AppDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -98,6 +101,9 @@ class SecurityGuard : BaseActivity() {
         profileImage.setOnClickListener {
             drawer.openDrawer(GravityCompat.END)
         }
+        
+        setupNotificationBell()
+        
         var editProfilePictureLogo=findViewById<ImageView>(R.id.editProfilePictureLogo)
         editProfilePictureLogo.setOnClickListener {
             galleryLauncher.launch("image/*")

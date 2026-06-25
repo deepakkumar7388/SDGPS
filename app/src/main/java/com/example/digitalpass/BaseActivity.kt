@@ -11,6 +11,11 @@ import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import android.view.View
+import android.view.animation.AnimationUtils
+import android.widget.FrameLayout
+import android.widget.ImageView
+import com.example.digitalpass.database.AppDatabase
 
 
 open class BaseActivity : AppCompatActivity() {
@@ -75,6 +80,37 @@ open class BaseActivity : AppCompatActivity() {
                 Toast.makeText(this, "Location permission is required", Toast.LENGTH_SHORT).show()
                 locationCallback?.invoke(null)
                 locationCallback = null
+            }
+        }
+    }
+
+    fun setupNotificationBell() {
+        var bellContainer = findViewById<FrameLayout>(R.id.bellContainer) ?: return
+        bellContainer.setOnClickListener {
+            startActivity(Intent(this, NotificationsActivity::class.java))
+        }
+
+        var notificationBell = findViewById<ImageView>(R.id.notificationBell) ?: return
+        var notificationBadge = findViewById<View>(R.id.notificationBadge) ?: return
+
+        val shakeRunnable = object : Runnable {
+            override fun run() {
+                val shakeAnimation = AnimationUtils.loadAnimation(this@BaseActivity, R.anim.shake_bell)
+                notificationBell.startAnimation(shakeAnimation)
+                // Schedule the next shake burst after a delay (e.g., 3 seconds)
+                notificationBell.postDelayed(this, 3000)
+            }
+        }
+
+        AppDatabase.getDatabase(this).notificationDao().getUnreadNotifications().observe(this) { notifications ->
+            notificationBell.removeCallbacks(shakeRunnable)
+            notificationBell.clearAnimation()
+
+            if (notifications.isNotEmpty()) {
+                notificationBadge.visibility = View.VISIBLE
+                shakeRunnable.run() // Start immediately
+            } else {
+                notificationBadge.visibility = View.GONE
             }
         }
     }

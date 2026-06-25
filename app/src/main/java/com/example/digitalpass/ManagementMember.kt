@@ -32,6 +32,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import android.view.animation.AnimationUtils
+import android.widget.FrameLayout
+import com.example.digitalpass.database.AppDatabase
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MultipartBody
@@ -133,6 +136,9 @@ class ManagementMember : BaseActivity() {
         profileImage.setOnClickListener {
             drawer.openDrawer(GravityCompat.END)
         }
+        
+        setupNotificationBell()
+        
         var editProfilePictureLogo=findViewById<ImageView>(R.id.editProfilePictureLogo)
         editProfilePictureLogo.setOnClickListener {
             galleryLauncher.launch("image/*")

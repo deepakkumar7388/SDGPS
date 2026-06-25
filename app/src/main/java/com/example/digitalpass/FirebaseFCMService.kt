@@ -18,6 +18,11 @@ import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import com.example.digitalpass.database.AppDatabase
+import com.example.digitalpass.database.NotificationEntity
 
 class FirebaseFCMService: FirebaseMessagingService() {
     override fun onNewToken(fcmtoken: String) {
@@ -46,6 +51,19 @@ class FirebaseFCMService: FirebaseMessagingService() {
                 notificationId = data["visitorId"]?.toIntOrNull() ?: notificationId
             } else if (data.containsKey("gatePassId")) {
                 notificationId = data["gatePassId"]?.toIntOrNull() ?: notificationId
+            }
+
+            val notificationEntity = NotificationEntity(
+                notificationId = notificationId,
+                title = data["title"] ?: "",
+                body = data["body"] ?: "",
+                name = data["name"] ?: "",
+                imgUrl = data["img"] ?: "",
+                timestamp = System.currentTimeMillis(),
+                isRead = false
+            )
+            CoroutineScope(Dispatchers.IO).launch {
+                AppDatabase.getDatabase(applicationContext).notificationDao().insert(notificationEntity)
             }
 
 

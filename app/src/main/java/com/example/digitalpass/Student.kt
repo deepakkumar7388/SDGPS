@@ -21,6 +21,11 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.bumptech.glide.Glide
+import android.view.animation.AnimationUtils
+import android.view.View
+import android.widget.FrameLayout
+import com.example.digitalpass.database.AppDatabase
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.CoroutineScope
@@ -91,6 +96,9 @@ class Student : BaseActivity() {
         profileImage.setOnClickListener {
             drawer.openDrawer(GravityCompat.END)
         }
+        
+        setupNotificationBell()
+        
         var editProfilePictureLogo=findViewById<ImageView>(R.id.editProfilePictureLogo)
         editProfilePictureLogo.setOnClickListener {
             galleryLauncher.launch("image/*")

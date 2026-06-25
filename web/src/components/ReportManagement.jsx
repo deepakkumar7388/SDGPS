@@ -151,7 +151,7 @@ const AddReportModal = ({ onClose, onSuccess, token }) => {
   );
 };
 
-const ReportManagement = ({ getImageUrl }) => {
+const ReportManagement = ({ getImageUrl, onImageClick }) => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -293,7 +293,8 @@ const ReportManagement = ({ getImageUrl }) => {
                     <img
                       src={getImageUrl(report.img)}
                       alt="Report"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                      onClick={(e) => { e.stopPropagation(); if (onImageClick) onImageClick(getImageUrl(report.img)); }}
                       onError={(e) => { e.target.style.display = 'none'; }}
                     />
                   ) : (

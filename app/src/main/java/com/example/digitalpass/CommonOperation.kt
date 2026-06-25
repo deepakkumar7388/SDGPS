@@ -151,25 +151,43 @@ object CommonOperation {
             }
             logoutButton=activity.findViewById<com.google.android.material.button.MaterialButton>(R.id.logoutButton)
             logoutButton?.setOnClickListener {
-                //make a dialog box for logout options
-                val options = arrayOf("Logout from this device", "Logout from all devices")
-                android.app.AlertDialog.Builder(activity)
-                    .setTitle("Logout Options")
-                    .setItems(options) { _, which ->
-                        val logoutType = if (which == 0) "thisUser" else "allUser"
-                        val message = if (which == 0) "Are you sure you want to logout from this device?" else "Are you sure you want to logout from ALL devices?"
-                        
-                        android.app.AlertDialog.Builder(activity)
-                            .setTitle("Confirm Logout")
-                            .setMessage(message)
-                            .setPositiveButton("Yes") { _, _ ->
-                                logout(activity, logoutType)
-                            }
-                            .setNegativeButton("No", null)
-                            .show()
-                    }
-                    .setNegativeButton("Cancel", null)
-                    .show()
+                val bottomSheetDialog = com.google.android.material.bottomsheet.BottomSheetDialog(activity)
+                val sheetView = activity.layoutInflater.inflate(R.layout.dialog_logout_bottom_sheet, null)
+                bottomSheetDialog.setContentView(sheetView)
+
+                val btnThisDevice = sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnThisDevice)
+                val btnAllDevices = sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnAllDevices)
+                val btnCancel = sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnCancel)
+
+                btnThisDevice.setOnClickListener {
+                    bottomSheetDialog.dismiss()
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+                        .setTitle("Confirm Logout")
+                        .setMessage("Are you sure you want to logout from this device?")
+                        .setPositiveButton("Yes, Logout") { _, _ ->
+                            logout(activity, "thisUser")
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
+
+                btnAllDevices.setOnClickListener {
+                    bottomSheetDialog.dismiss()
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+                        .setTitle("Confirm Logout")
+                        .setMessage("Are you sure you want to logout from ALL devices? You will be signed out everywhere.")
+                        .setPositiveButton("Yes, Logout All") { _, _ ->
+                            logout(activity, "allUser")
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
+
+                btnCancel.setOnClickListener {
+                    bottomSheetDialog.dismiss()
+                }
+
+                bottomSheetDialog.show()
             }
         }
 

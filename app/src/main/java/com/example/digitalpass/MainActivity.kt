@@ -17,14 +17,22 @@ import retrofit2.Callback
 import retrofit2.Response
 import androidx.credentials.CredentialManager
 import androidx.credentials.CreatePasswordRequest
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetPasswordOption
+import androidx.credentials.PasswordCredential
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import android.util.Log
+import java.security.MessageDigest
 
 class MainActivity : AppCompatActivity() {
 
     lateinit var progressBar: CustomProgressBar
+    private var fetchedUsername: String? = null
+    private var fetchedPassword: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +61,8 @@ class MainActivity : AppCompatActivity() {
         val password = findViewById<EditText>(R.id.loginPassword)
         val forgetPassButton = findViewById<TextView>(R.id.forgetPassword)
         
+        retrieveSavedCredentials(email, password)
+
         forgetPassButton.setOnClickListener {
             startActivity(Intent(this, ForgetPassword::class.java))
         }
@@ -92,7 +102,29 @@ class MainActivity : AppCompatActivity() {
                                 LoginUserDataHolder.saveState(this@MainActivity)
                                 LoginUserDataHolder.storeFCMToken()
                                 createNotificationChannel()
-                                getPermission()
+                                
+                                val currentHash = hashString(passwordSt)
+                                val savedHashKey = "cred_hash_$emailSt"
+                                val savedHash = sharedPreferences.getString(savedHashKey, null)
+
+                                if ((emailSt == fetchedUsername && passwordSt == fetchedPassword) || currentHash == savedHash) {
+                                    // Password already saved in autofill or previously prompted and hashed! Skip popup entirely.
+                                    getPermission()
+                                } else {
+                                    val credentialManager = CredentialManager.create(this@MainActivity)
+                                    val passwordRequest = CreatePasswordRequest(emailSt, passwordSt)
+                                    
+                                    lifecycleScope.launch {
+                                        try {
+                                            credentialManager.createCredential(this@MainActivity, passwordRequest)
+                                            // Save the hash locally so we don't prompt again for this exact password
+                                            sharedPreferences.edit().putString(savedHashKey, currentHash).apply()
+                                        } catch (e: Exception) {
+                                            Log.e("MainActivity", "Failed to save credential", e)
+                                        }
+                                        getPermission()
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -406,7 +438,6 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 1) {
-            Toast.makeText(this@MainActivity, "Login Successful", Toast.LENGTH_SHORT).show()
             triggerSecureGatewayAnimation(LoginUserDataHolder.loginUserData?.get("role"))
         }
     }
@@ -417,5 +448,41 @@ class MainActivity : AppCompatActivity() {
             channel.description = "DigitalPass Notification Channel"
             getSystemService(android.app.NotificationManager::class.java).createNotificationChannel(channel)
         }
+    }
+
+    private fun retrieveSavedCredentials(emailField: EditText, passwordField: EditText) {
+        val credentialManager = CredentialManager.create(this)
+        val getPasswordOption = GetPasswordOption()
+        val getCredRequest = GetCredentialRequest(listOf(getPasswordOption))
+
+        lifecycleScope.launch {
+            try {
+                val result = credentialManager.getCredential(
+                    context = this@MainActivity,
+                    request = getCredRequest
+                )
+                val credential = result.credential
+                if (credential is PasswordCredential) {
+                    val username = credential.id
+                    val userPassword = credential.password
+                    fetchedUsername = username
+                    fetchedPassword = userPassword
+                    emailField.setText(username)
+                    passwordField.setText(userPassword)
+                    
+                    // Trigger login button click
+                    findViewById<Button>(R.id.loginButton).performClick()
+                }
+            } catch (e: GetCredentialException) {
+                Log.d("MainActivity", "No credentials or user cancelled: ${e.message}")
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Failed to get credentials", e)
+            }
+        }
+    }
+
+    private fun hashString(input: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 }

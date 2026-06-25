@@ -535,3 +535,15 @@ export const getAllDepartment = async () => {
   }
   return response.json();
 };
+
+export const logoutUser = async (data) => {
+  const response = await fetch(`${BASE_URL}/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, `Failed to logout`));
+  }
+  return response.text();
+};
