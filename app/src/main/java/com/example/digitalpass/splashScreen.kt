@@ -25,6 +25,12 @@ import retrofit2.Callback
 import retrofit2.Response
 
 class splashScreen : AppCompatActivity() {
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        val newConfig = android.content.res.Configuration(newBase.resources.configuration)
+        newConfig.fontScale = 1.0f
+        super.attachBaseContext(newBase.createConfigurationContext(newConfig))
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

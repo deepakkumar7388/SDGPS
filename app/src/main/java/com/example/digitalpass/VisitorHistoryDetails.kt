@@ -7,6 +7,12 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
 class VisitorHistoryDetails : AppCompatActivity() {
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        val newConfig = android.content.res.Configuration(newBase.resources.configuration)
+        newConfig.fontScale = 1.0f
+        super.attachBaseContext(newBase.createConfigurationContext(newConfig))
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

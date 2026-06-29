@@ -31,7 +31,12 @@ class MemberViewForVisitor : BaseActivity() {
         var callIcon=findViewById<ImageView>(R.id.callIcon)
         var email=findViewById<TextView>(R.id.email)
 
-        if(member["img"]?.trim()!="") Glide.with(this).load(LoginUserDataHolder.getURL(member["img"])).into(image)
+        if(member["img"]?.trim()!=""){
+            Glide.with(this).load(LoginUserDataHolder.getURL(member["img"])).into(image)
+            image.setOnClickListener {
+                CommonOperation.showFullScreenImage(this, member["img"])
+            }
+        }
         name.text=member["name"]
         department.text=member["department"]
         phone.text=member["phone"]

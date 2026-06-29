@@ -115,7 +115,12 @@ class UserManagementViewUser : BaseActivity() {
         user = intent.getSerializableExtra("user") as HashMap<String, String>
 
         //setup common things of user
-        if (user["img"]?.trim() != "") Glide.with(this).load(LoginUserDataHolder.getURL(user["img"])).into(img)
+        if (user["img"]?.trim() != "") {
+            Glide.with(this).load(LoginUserDataHolder.getURL(user["img"])).into(img)
+            img.setOnClickListener {
+                CommonOperation.showFullScreenImage(this, user["img"])
+            }
+        }
         name.setText(user["name"])
         email.setText(user["email"])
         phone.setText(user["phone"])

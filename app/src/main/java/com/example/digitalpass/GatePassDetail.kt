@@ -156,8 +156,12 @@ class GatePassDetail : BaseActivity() {
         }
 
         //setup user data
-        if(gatePass["img"]?.trim()!="")
+        if(gatePass["img"]?.trim()!=""){
             Glide.with(this).load(LoginUserDataHolder.getURL(gatePass["img"])).into(img)
+            img.setOnClickListener {
+                CommonOperation.showFullScreenImage(this, gatePass["img"])
+            }
+        }
         name.text=gatePass["name"]
         status.text=gatePass["status"]
         gatePassId.text=gatePass["gatePassId"]

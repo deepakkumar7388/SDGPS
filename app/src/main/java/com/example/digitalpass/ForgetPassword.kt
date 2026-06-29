@@ -28,6 +28,12 @@ import retrofit2.Call
 import retrofit2.Callback
 
 class ForgetPassword : AppCompatActivity() {
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        val newConfig = android.content.res.Configuration(newBase.resources.configuration)
+        newConfig.fontScale = 1.0f
+        super.attachBaseContext(newBase.createConfigurationContext(newConfig))
+    }
     private lateinit var updateText: TextView
     private lateinit var emailTextInputLayout: TextInputLayout
     private lateinit var email: TextInputEditText

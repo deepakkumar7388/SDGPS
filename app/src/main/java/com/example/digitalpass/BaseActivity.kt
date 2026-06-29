@@ -20,6 +20,12 @@ import com.example.digitalpass.database.AppDatabase
 
 open class BaseActivity : AppCompatActivity() {
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        val newConfig = android.content.res.Configuration(newBase.resources.configuration)
+        newConfig.fontScale = 1.0f
+        super.attachBaseContext(newBase.createConfigurationContext(newConfig))
+    }
+
     private var fusedLocationClient: FusedLocationProviderClient? = null
     private var locationCallback: ((Location?) -> Unit)? = null
 

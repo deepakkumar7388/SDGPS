@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.core.text.set
 import androidx.exifinterface.media.ExifInterface
 import com.bumptech.glide.Glide
+import com.example.digitalpass.LoginUserDataHolder.PREFS_NAME
 import com.example.digitalpass.LoginUserDataHolder.loginUserData
 import com.example.digitalpass.LoginUserDataHolder.token
 import com.example.digitalpass.database.AppDatabase
@@ -43,6 +44,12 @@ object CommonOperation {
         //we will do all this work with CoroutineScope
         CoroutineScope(Dispatchers.Main).launch {
 
+            activity.findViewById<ImageView>(R.id.navProfileImage).setOnClickListener {
+                if (loginUserData?.get("img") != "") showFullScreenImage(
+                    activity as Context,
+                    "profile_images/${loginUserData?.get("email")}"
+                )
+            }
             //show app update if available
             val serverVersion = loginUserData?.get("versionId")
             if(serverVersion != versionId){
@@ -60,7 +67,16 @@ object CommonOperation {
                             return@setOnClickListener
                         }
                     }
-                        updateLayout.visibility=View.GONE
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        if (androidx.core.content.ContextCompat.checkSelfPermission(activity, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                            androidx.core.app.ActivityCompat.requestPermissions(activity, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+                            Toast.makeText(activity, "Please allow notifications to see download progress and click Update again.", Toast.LENGTH_LONG).show()
+                            return@setOnClickListener
+                        }
+                    }
+                        updateButton.text="Updating..."
+                        updateButton.isEnabled=false
+                        activity.findViewById<ImageView>(R.id.laterButton).visibility=View.GONE
 
                     
                     val url = loginUserData?.get("downloadUrl")?.toString() ?: "https://github.com/yogeshsaini7172/sistecDigitalPassRelease/releases/latest/download/app-release.apk"
@@ -200,9 +216,9 @@ object CommonOperation {
 
                 //check the size of image upto 1500KB
                 var size=context.contentResolver.openAssetFileDescriptor(uri,"r")?.length?:0
-                if(size>1500000|| size.toInt() ==0){
+                if(size>30720000|| size.toInt() ==0){
                     launch(Dispatchers.Main) {
-                        Toast.makeText(context, "Image size should be less than 1.5MB", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Image size should be less than 30 MB", Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
@@ -233,6 +249,11 @@ object CommonOperation {
                                 Glide.with(context).load(uri)
                                     .into(context.findViewById(R.id.ProfileImage))
                                 Glide.with(context).load(uri).into(context.findViewById(R.id.navProfileImage))
+                                loginUserData?.put("img","profile_images/${loginUserData?.get("email")}")
+
+                            //put this img in shared preference
+                            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putString("ud_img","profile_images/${loginUserData?.get("email")}").apply()
+
                         } else {
                             val errorMessage = LoginUserDataHolder.getErrorMessage(response)
                             Toast.makeText(context, errorMessage, Toast.LENGTH_LONG)
@@ -358,5 +379,29 @@ object CommonOperation {
             e.printStackTrace()
             throw e // Throw so getMultipartImage knows it failed
         }
+    }
+
+    fun showFullScreenImage(context: Context, imageUrl: String?) {
+        if (imageUrl.isNullOrBlank()) return
+        val dialog = android.app.Dialog(context, R.style.FullScreenImageDialog)
+        dialog.setContentView(R.layout.dialog_fullscreen_image)
+
+        val fullScreenImageView = dialog.findViewById<ImageView>(R.id.fullScreenImageView)
+        val closeButton = dialog.findViewById<ImageView>(R.id.closeButton)
+
+        Glide.with(context)
+            .load(LoginUserDataHolder.getURL(imageUrl))
+            .into(fullScreenImageView)
+
+        closeButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.black)
+        dialog.show()
+        dialog.window?.setLayout(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT
+        )
     }
 }

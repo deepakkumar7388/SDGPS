@@ -30,6 +30,12 @@ import java.security.MessageDigest
 
 class MainActivity : AppCompatActivity() {
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        val newConfig = android.content.res.Configuration(newBase.resources.configuration)
+        newConfig.fontScale = 1.0f
+        super.attachBaseContext(newBase.createConfigurationContext(newConfig))
+    }
+
     lateinit var progressBar: CustomProgressBar
     private var fetchedUsername: String? = null
     private var fetchedPassword: String? = null

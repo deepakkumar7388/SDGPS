@@ -12,6 +12,12 @@ import kotlinx.coroutines.launch
 
 class NotificationsActivity : AppCompatActivity() {
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        val newConfig = android.content.res.Configuration(newBase.resources.configuration)
+        newConfig.fontScale = 1.0f
+        super.attachBaseContext(newBase.createConfigurationContext(newConfig))
+    }
+
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: NotificationAdapter
     private lateinit var database: AppDatabase

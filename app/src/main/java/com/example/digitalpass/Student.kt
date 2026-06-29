@@ -123,6 +123,46 @@ class Student : BaseActivity() {
     }
 
     private fun showDialogueToGetReason() {
+        val types = arrayOf("Regular", "Inter Institution")
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Select Gate Pass Type")
+            .setItems(types) { _, which ->
+                if (which == 0) {
+                    showReasonDialog(null)
+                } else {
+                    fetchCampusesAndShowSelection()
+                }
+            }
+            .show()
+    }
+
+    private fun fetchCampusesAndShowSelection() {
+        progressBar?.startProgressBar()
+        val call = RetrofitClient.instance.getCampusForAllotment(LoginUserDataHolder.token)
+        call.enqueue(object: Callback<ArrayList<String>> {
+            override fun onResponse(call: Call<ArrayList<String>>?, response: Response<ArrayList<String>>?) {
+                progressBar?.stopAnimation()
+                if (response?.isSuccessful == true && response.body() != null) {
+                    val campuses = response.body()!!
+                    val campusArray = campuses.toTypedArray()
+                    MaterialAlertDialogBuilder(this@Student)
+                        .setTitle("Select Destination Campus")
+                        .setItems(campusArray) { _, which ->
+                            showReasonDialog(campusArray[which])
+                        }
+                        .show()
+                } else {
+                    Toast.makeText(this@Student, "Failed to load campuses", Toast.LENGTH_SHORT).show()
+                }
+            }
+            override fun onFailure(call: Call<ArrayList<String>>?, t: Throwable) {
+                progressBar?.stopAnimation()
+                Toast.makeText(this@Student, "Something went wrong", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun showReasonDialog(destinationCampus: String?) {
         val dialogView = layoutInflater.inflate(R.layout.show_dialog_to_give_aproval_visitor, null)
         var dialogApplyButton=dialogView.findViewById<Button>(R.id.remarkDoneButton)
         var reason=dialogView.findViewById<EditText>(R.id.remark)
@@ -142,21 +182,20 @@ class Student : BaseActivity() {
                 Toast.makeText(this,"Please enter reason",Toast.LENGTH_SHORT).show()
             }else{
                 dialogApplyButton.isEnabled=false
-                checkLocationAndApply(reason.text.toString().trim())
+                checkLocationAndApply(reason.text.toString().trim(), destinationCampus)
                 dialogApplyButton.isEnabled=true
                 dialog.dismiss()
             }
         }
-
     }
 
-    private fun checkLocationAndApply(reason: String) {
+    private fun checkLocationAndApply(reason: String, destinationCampus: String?) {
         progressBar?.startProgressBar()
         applyButton?.isEnabled=false
         
         requestUserLocation { location ->
             if (location != null) {
-                applyForGatePass(reason, location.latitude.toString(), location.longitude.toString())
+                applyForGatePass(reason, location.latitude.toString(), location.longitude.toString(), destinationCampus)
             } else {
                 progressBar?.stopAnimation()
                 applyButton?.isEnabled=true
@@ -165,17 +204,19 @@ class Student : BaseActivity() {
         }
     }
 
-    private fun applyForGatePass(reason: String, latitude: String, longitude: String) {
+    private fun applyForGatePass(reason: String, latitude: String, longitude: String, destinationCampus: String?) {
         progressBar?.startProgressBar()
         applyButton?.isEnabled=false
-        var callToApplyGatePass= RetrofitClient.instance.applyForGatePass(
-            hashMapOf(
-                "reason" to reason,
-                "token" to LoginUserDataHolder.token,
-                "latitude" to latitude,
-                "longitude" to longitude
-            )
+        val map = hashMapOf(
+            "reason" to reason,
+            "token" to LoginUserDataHolder.token,
+            "latitude" to latitude,
+            "longitude" to longitude
         )
+        if (destinationCampus != null) {
+            map["destinationCampus"] = destinationCampus
+        }
+        var callToApplyGatePass= RetrofitClient.instance.applyForGatePass(map)
         callToApplyGatePass.enqueue(object: Callback<HashMap<String,String>> {
             override fun onResponse(
                 call: Call<HashMap<String, String>?>,

@@ -32,7 +32,7 @@ object LoginUserDataHolder {
     var campusForBatchOperation=""
 
 
-    private const val PREFS_NAME = "DigitalPassPrefs"
+     const val PREFS_NAME = "DigitalPassPrefs"
     private const val KEY_TOKEN  = "token"
     // All loginUserData keys we want to persist:
     private val USER_DATA_KEYS = listOf(
