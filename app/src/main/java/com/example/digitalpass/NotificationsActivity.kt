@@ -9,6 +9,10 @@ import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import android.view.Menu
+import android.view.MenuItem
+import android.widget.Toast
+import com.example.digitalpass.CommonOperation.logout
 
 class NotificationsActivity : AppCompatActivity() {
 
@@ -48,6 +52,35 @@ class NotificationsActivity : AppCompatActivity() {
     private fun markAsRead(notification: NotificationEntity) {
         CoroutineScope(Dispatchers.IO).launch {
             database.notificationDao().markAsRead(notification.id)
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_notifications, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_mark_all_read -> {
+                if(adapter.notifications.isEmpty())
+                    Toast.makeText(this,"No notifications",Toast.LENGTH_SHORT).show()
+                else{
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle("Confirm Read")
+                        .setMessage("Are you sure you want to mark all notifications as read?")
+                        .setPositiveButton("Yes, Read") { _, _ ->
+                            CoroutineScope(Dispatchers.IO).launch {
+                                database.notificationDao().deleteAll()
+                            }
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
+
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
     }
 }

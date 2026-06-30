@@ -17,7 +17,7 @@ interface NotificationDao {
     @Query("SELECT * FROM notifications ORDER BY timestamp DESC")
     fun getAllNotifications(): LiveData<List<NotificationEntity>>
 
-    @Query("UPDATE notifications SET isRead = 1 WHERE id = :id")
+    @Query("DELETE FROM notifications WHERE id = :id")
     suspend fun markAsRead(id: Int)
     
     @Query("DELETE FROM notifications")

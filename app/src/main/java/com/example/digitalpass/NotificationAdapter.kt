@@ -14,7 +14,7 @@ import java.util.Date
 import java.util.Locale
 
 class NotificationAdapter(
-    private var notifications: List<NotificationEntity>,
+     var notifications: List<NotificationEntity>,
     private val onMarkAsReadClick: (NotificationEntity) -> Unit
 ) : RecyclerView.Adapter<NotificationAdapter.NotificationViewHolder>() {
 
