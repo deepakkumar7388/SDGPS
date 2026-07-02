@@ -123,17 +123,17 @@ class Student : BaseActivity() {
     }
 
     private fun showDialogueToGetReason() {
-        val types = arrayOf("Regular", "Inter Institution")
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Select Gate Pass Type")
-            .setItems(types) { _, which ->
-                if (which == 0) {
+//        val types = arrayOf("Regular", "Inter Institution")
+//        MaterialAlertDialogBuilder(this)
+//            .setTitle("Select Gate Pass Type")
+//            .setItems(types) { _, which ->
+//                if (which == 0) {
                     showReasonDialog(null)
-                } else {
-                    fetchCampusesAndShowSelection()
-                }
-            }
-            .show()
+//                } else {
+//                    fetchCampusesAndShowSelection()
+//                }
+//            }
+//            .show()
     }
 
     private fun fetchCampusesAndShowSelection() {

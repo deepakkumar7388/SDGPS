@@ -15,6 +15,7 @@ import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -128,7 +129,7 @@ class splashScreen : AppCompatActivity() {
                     }
                 }
                 override fun onFailure(call: Call<HashMap<String, String>?>, t: Throwable) {
-                    navigateToLogin()
+                    Toast.makeText(this@splashScreen, "Network error", Toast.LENGTH_SHORT).show()
                 }
             })
         } else {

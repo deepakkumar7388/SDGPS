@@ -163,7 +163,20 @@ class GatePassDetail : BaseActivity() {
             }
         }
         name.text=gatePass["name"]
-        status.text=gatePass["status"]
+        
+        val statusVal = gatePass["status"]
+        when (statusVal?.lowercase()) {
+            "approving" -> status.setTextColor(android.graphics.Color.parseColor("#F39C12"))
+            "approved" -> status.setTextColor(android.graphics.Color.parseColor("#28A745"))
+            "rejected" -> status.setTextColor(android.graphics.Color.parseColor("#DC3545"))
+            "exit" -> status.setTextColor(android.graphics.Color.parseColor("#17A2B8"))
+            "expired" -> status.setTextColor(android.graphics.Color.parseColor("#795548"))
+            else -> status.setTextColor(android.graphics.Color.parseColor("#636E72")) // pending / default
+        }
+        
+        //make status in uppercase
+        status.text=statusVal?.uppercase()
+        if(statusVal?.uppercase()=="APPROVING")status.text="In Process"
         gatePassId.text=gatePass["gatePassId"]
         department.text=gatePass["department"]+"  "+gatePass["role"]
         phone.text=gatePass["phone"]
@@ -396,7 +409,8 @@ class GatePassDetail : BaseActivity() {
 
     private fun approveGatePass(){
         //we have check is there any tgRemark available or not ,if there is no tgRemark so first we have to take tgRemark then we will give approval
-        if(gatePass.containsKey("tgRemark")){
+        //we will take tgRemark only when this gate pass user is student
+        if(gatePass.containsKey("tgRemark")||gatePass["role"]!="student"){
             approveTheGatePass(hashMapOf(
                 "token" to LoginUserDataHolder.token,
                 "gatePassId" to gatePass["gatePassId"]!!,

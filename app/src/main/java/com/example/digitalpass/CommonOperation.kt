@@ -37,7 +37,7 @@ import java.io.File
 
 object CommonOperation {
 
-    val versionId="7"
+    val versionId="8"
     var logoutButton: MaterialButton?=null
     fun setupUserProfile(activity: Activity) {
 
@@ -222,11 +222,14 @@ object CommonOperation {
                     }
                     return@launch
                 }
+                context.findViewById<ImageView>(R.id.editProfilePictureLogo).isEnabled=false
+                launch(Dispatchers.Main) {
+                    Toast.makeText(context,"Uploading...",Toast.LENGTH_LONG).show()
+                }
 
                 var imagePart =getMultipartImage(context, uri)
 
-                val tokenRequestBody =
-                    LoginUserDataHolder.token.toRequestBody("text/plain".toMediaTypeOrNull())
+                val tokenRequestBody =token.toRequestBody("text/plain".toMediaTypeOrNull())
 
                 launch(Dispatchers.Main) {
                     Toast.makeText(context, "Uploading image...", Toast.LENGTH_SHORT)
@@ -238,6 +241,8 @@ object CommonOperation {
                         call: Call<ResponseBody?>,
                         response: Response<ResponseBody?>
                     ) {
+
+                        context.findViewById<ImageView>(R.id.editProfilePictureLogo).isEnabled=true
                         if (response.isSuccessful) {
                             Toast.makeText(
                                 context,
@@ -258,6 +263,8 @@ object CommonOperation {
                             val errorMessage = LoginUserDataHolder.getErrorMessage(response)
                             Toast.makeText(context, errorMessage, Toast.LENGTH_LONG)
                                 .show()
+
+                            context.findViewById<ImageView>(R.id.editProfilePictureLogo).isEnabled=true
                         }
                     }
 

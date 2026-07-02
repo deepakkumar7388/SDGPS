@@ -34,7 +34,24 @@ class RecentPassAdapter(var listType:String,var recentPassList:ArrayList<HashMap
 
     override fun onBindViewHolder(holder: RecentPassAdapter.ViewHolder, position: Int) {
         holder.name.text=recentPassList[position]["name"]
-        holder.status.text=recentPassList[position]["status"]
+        
+        var statusVal = recentPassList[position]["status"]
+        holder.status.text=statusVal
+        
+        when (statusVal?.lowercase()) {
+            "approving" -> holder.status.setTextColor(android.graphics.Color.parseColor("#F39C12"))
+            "approved" -> holder.status.setTextColor(android.graphics.Color.parseColor("#28A745"))
+            "rejected" -> holder.status.setTextColor(android.graphics.Color.parseColor("#DC3545"))
+            "exit" -> holder.status.setTextColor(android.graphics.Color.parseColor("#17A2B8"))
+            "expired" -> holder.status.setTextColor(android.graphics.Color.parseColor("#795548"))
+            else -> holder.status.setTextColor(android.graphics.Color.parseColor("#636E72")) // pending / default
+        }
+
+        //make status in uppercase
+        holder.status.text=statusVal?.uppercase()
+        if(statusVal=="APPROVING")holder.status.text="In Process"
+        
+
         holder.applyDateTime.visibility=View.VISIBLE
         if(listType=="visitor")holder.applyDateTime.text=recentPassList[position]["entryDate"]
         else holder.applyDateTime.text=recentPassList[position]["applyDate"]

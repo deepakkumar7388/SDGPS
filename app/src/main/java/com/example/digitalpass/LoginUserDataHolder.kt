@@ -136,7 +136,7 @@ object LoginUserDataHolder {
 
     fun getURL(img: String?):String{
         //Return the cloudinary URL by generating user img
-        return "https://res.cloudinary.com/dtdo4gzfh/image/upload/$img.jpg?t=${System.currentTimeMillis()}"
+        return "https://res.cloudinary.com/dtdo4gzfh/image/upload/$img.jpg"
     }
 
 
