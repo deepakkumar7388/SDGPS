@@ -6,12 +6,16 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [UserEntity::class, BatchEntity::class, NotificationEntity::class], version = 3, exportSchema = false)
+@Database(entities = [UserEntity::class, BatchEntity::class, NotificationEntity::class, CampusEntity::class, DepartmentEntity::class, GatePassEntity::class, VisitorEntity::class], version = 8, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun batchDao(): BatchDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun campusDao(): CampusDao
+    abstract fun departmentDao(): DepartmentDao
+    abstract fun gatePassDao(): GatePassDao
+    abstract fun visitorDao(): VisitorDao
 
     companion object {
         @Volatile

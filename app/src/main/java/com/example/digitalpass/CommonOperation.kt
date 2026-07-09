@@ -47,7 +47,7 @@ object CommonOperation {
             activity.findViewById<ImageView>(R.id.navProfileImage).setOnClickListener {
                 if (loginUserData?.get("img") != "") showFullScreenImage(
                     activity as Context,
-                    "profile_images/${loginUserData?.get("email")}"
+                    loginUserData?.get("img")
                 )
             }
             //show app update if available
@@ -303,15 +303,20 @@ object CommonOperation {
                     token=""
                     loginUserData=null
                     context.getSharedPreferences("DigitalPassPrefs", Context.MODE_PRIVATE).edit().clear().apply()
-                    CoroutineScope(Dispatchers.Main).launch {
-                        Toast.makeText(context, "Log out successfully", Toast.LENGTH_SHORT).show()
-                        var intent = Intent(context, MainActivity::class.java)
-                        intent.flags =
-                            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        context.startActivity(intent)
-
-                        //now finish this context activity
-                        if(context is Activity)context.finish()
+                    
+                    CoroutineScope(Dispatchers.IO).launch {
+                        com.example.digitalpass.database.AppDatabase.getDatabase(context).clearAllTables()
+                        
+                        CoroutineScope(Dispatchers.Main).launch {
+                            Toast.makeText(context, "Log out successfully", Toast.LENGTH_SHORT).show()
+                            var intent = Intent(context, MainActivity::class.java)
+                            intent.flags =
+                                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            context.startActivity(intent)
+    
+                            //now finish this context activity
+                            if(context is Activity)context.finish()
+                        }
                     }
 
                 }

@@ -88,10 +88,10 @@ class ManagementMember : BaseActivity() {
         }
 
         swipeRefresh=findViewById(R.id.swipeRefreshLayout)
-            swipeRefresh.setOnRefreshListener {
-            LoginUserDataHolder.getVisitorList()
-            LoginUserDataHolder.getGatePassList()
-                swipeRefresh.isRefreshing=false
+        swipeRefresh.setOnRefreshListener {
+            passSyncViewModel.triggerGatePassSync(LoginUserDataHolder.token)
+            passSyncViewModel.triggerVisitorSync(LoginUserDataHolder.token)
+            swipeRefresh.isRefreshing=false
         }
 
         progressBar=findViewById(R.id.customProgressBar)
@@ -249,8 +249,7 @@ class ManagementMember : BaseActivity() {
         LoginUserDataHolder.visitorListAdapter=visitorAdapter
         LoginUserDataHolder.gatePassListAdapter=gatepassAdapter
 
-        LoginUserDataHolder.getVisitorList()
-        LoginUserDataHolder.getGatePassList()
+        setupPassSyncAndObserve()
 
         val toggleGroup = findViewById<com.google.android.material.button.MaterialButtonToggleGroup>(R.id.toggleGroup)
         
@@ -280,6 +279,8 @@ class ManagementMember : BaseActivity() {
             }
         }
 
+        // Trigger background user sync on dashboard load
+        userOperationViewModel.triggerUserSync(LoginUserDataHolder.token)
     }
 
     private fun setupSearchBar(){
@@ -489,64 +490,79 @@ class ManagementMember : BaseActivity() {
 
         progressBar.startProgressBar()
 
-        //fetch the campus list and show the dialog with list of campus in recycler view of dialog
-        CoroutineScope(Dispatchers.IO).launch {
-            val call = RetrofitClient.instance.getCampusForAllotment(LoginUserDataHolder.token)
-            call.enqueue(object : Callback<ArrayList<String>> {
-                override fun onResponse(
-                    call: Call<ArrayList<String>?>,
-                    response: Response<ArrayList<String>?>
-                ) {
-                    progressBar.stopAnimation()
-                    if (response.isSuccessful) {
-                        var campusList = response.body()!!
-                        var intent:Intent?=null
-                        if(dialogType=="allotment") {
-                            intent = Intent(this@ManagementMember, LevelForBatch::class.java)
-                            intent.putExtra("levelType", "allotment")
-                        }
-                        else {
-                            intent=Intent(this@ManagementMember, Batch::class.java)
-                        }
+        userOperationViewModel.campuses.removeObservers(this)
+        
+        userOperationViewModel.campuses.observe(this) { result ->
+            progressBar.stopAnimation()
+            result.onSuccess { campusList ->
+                var intent:Intent?=null
+                if(dialogType=="allotment") {
+                    intent = Intent(this@ManagementMember, LevelForBatch::class.java)
+                    intent.putExtra("levelType", "allotment")
+                }
+                else {
+                    intent=Intent(this@ManagementMember, Batch::class.java)
+                }
 
-                        if(campusList.size==1){
-                            intent.putExtra("campusName",campusList[0])
+                if(campusList.size==1){
+                    intent.putExtra("campusName",campusList[0])
+                    startActivity(intent)
+                }
+                else{
+                    val dialog = MaterialAlertDialogBuilder(this@ManagementMember)
+                        .setTitle("Select Campus")
+                        .setItems(campusList.toTypedArray()) { dialog, which ->
+                            intent.putExtra("campusName",campusList[which])
                             startActivity(intent)
                         }
-                        else{
-                            runOnUiThread {
-                            //now we have to show the dialog with list of campus
-                            val dialog = MaterialAlertDialogBuilder(this@ManagementMember)
-                                .setTitle("Select Campus")
-                                .setItems(campusList.toTypedArray()) { dialog, which ->
-                                    intent.putExtra("campusName",campusList[which])
-                                    startActivity(intent)
-                                }
-                                .create()
-                            dialog.show()
-                                }
-                        }
-                    }
-                    else{
-                        val errorMessage = LoginUserDataHolder.getErrorMessage(response)
-                        Toast.makeText(this@ManagementMember, errorMessage, Toast.LENGTH_LONG)
-                            .show()
-                    }
-
-
+                        .create()
+                    dialog.show()
                 }
-
-                override fun onFailure(
-                    call: Call<ArrayList<String>?>,
-                    t: Throwable
-                ) {
-                    progressBar.stopAnimation()
-                    Toast.makeText(this@ManagementMember, "Something went wrong", Toast.LENGTH_SHORT)
-                }
-            })
+            }.onFailure {
+                Toast.makeText(this@ManagementMember, it.message ?: "Failed to load campuses", Toast.LENGTH_SHORT).show()
+            }
+            userOperationViewModel.campuses.removeObservers(this)
         }
+        
+        userOperationViewModel.fetchCampuses(LoginUserDataHolder.token)
     }
 
+
+    private fun setupPassSyncAndObserve() {
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        val todayStart = "$today 00:00:00"
+        val todayEnd = "$today 23:59:59"
+
+        passSyncViewModel.activeGatePasses.observe(this) { list ->
+            val maps = ArrayList(list.map { it.passData })
+            LoginUserDataHolder.gatePassList = maps
+            gatepassAdapter.updateList(maps)
+        }
+
+        passSyncViewModel.activeVisitors.observe(this) { list ->
+            val maps = ArrayList(list.map { it.visitorData })
+            LoginUserDataHolder.visitorList = maps
+            visitorAdapter.updateList(maps)
+        }
+
+        passSyncViewModel.gatePassSyncState.observe(this) { result ->
+            result.onSuccess {
+                passSyncViewModel.loadActiveGatePasses(todayStart, todayEnd)
+            }
+        }
+
+        passSyncViewModel.visitorSyncState.observe(this) { result ->
+            result.onSuccess {
+                passSyncViewModel.loadActiveVisitors(todayStart, todayEnd)
+            }
+        }
+
+        passSyncViewModel.loadActiveGatePasses(todayStart, todayEnd)
+        passSyncViewModel.loadActiveVisitors(todayStart, todayEnd)
+
+        passSyncViewModel.triggerGatePassSync(LoginUserDataHolder.token)
+        passSyncViewModel.triggerVisitorSync(LoginUserDataHolder.token)
+    }
 
     override fun onResume(){
         super.onResume()

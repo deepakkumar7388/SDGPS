@@ -90,36 +90,21 @@ class AddReportActivity : BaseActivity() {
 
     private fun getAllDepartment(){
         customProgressBar.startProgressBar()
-        CoroutineScope(Dispatchers.IO).launch {
-            RetrofitClient.instance.getAllDepartment().enqueue(object : Callback<ArrayList<String>> {
-                override fun onResponse(
-                    call: Call<ArrayList<String>?>,
-                    response: Response<ArrayList<String>?>
-                ) {
-                    customProgressBar.stopAnimation()
-                    if (response.isSuccessful) {
-                        var departmentList = response.body()?: ArrayList()
-                        departmentList.add(0,"ALL DEPARTMENT")
-                        runOnUiThread {
-                            departmentSpinner.adapter= ArrayAdapter(
-                                this@AddReportActivity,
-                                android.R.layout.simple_spinner_item,
-                                departmentList
-                            )
-                        }
-                    }
-                    else Toast.makeText(this@AddReportActivity, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_LONG).show()
-                }
-
-                override fun onFailure(
-                    call: Call<ArrayList<String>?>,
-                    t: Throwable
-                ) {
-                    customProgressBar.stopAnimation()
-                    Toast.makeText(this@AddReportActivity, "Something went wrong: ${t.message}", Toast.LENGTH_SHORT).show()
-                }
-            })
+        
+        userOperationViewModel.departments.removeObservers(this)
+        userOperationViewModel.departments.observe(this) { result ->
+            result.onSuccess { departmentList ->
+                val departments = ArrayList(departmentList)
+                departments.add(0,"ALL DEPARTMENT")
+                departmentSpinner.adapter = ArrayAdapter(this@AddReportActivity, android.R.layout.simple_spinner_item, departments)
+            }.onFailure {
+                Toast.makeText(this@AddReportActivity, "Something went wrong: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+            customProgressBar.stopAnimation()
+            userOperationViewModel.departments.removeObservers(this)
         }
+        
+        userOperationViewModel.fetchDepartments(LoginUserDataHolder.token, "report")
     }
 
     private fun loadBitmapAndTakeMultipart(bitmap: Bitmap) {

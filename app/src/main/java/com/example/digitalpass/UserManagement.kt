@@ -71,6 +71,9 @@ class UserManagement : BaseActivity() {
                     }
                 }
                 filterMembers()
+                
+                // Trigger sync immediately to guarantee server-client state parity
+                userOperationViewModel.triggerUserSync(LoginUserDataHolder.token)
             }
         }
     }
@@ -225,77 +228,73 @@ class UserManagement : BaseActivity() {
         roleToggleGroup.check(R.id.allUserButton)
 
         progressBar?.startProgressBar()
+        
+        userOperationViewModel.userSyncState.removeObservers(this)
+        userOperationViewModel.userSyncState.observe(this) { result ->
+            result.onSuccess { users ->
+                // Filter users based on intent type
+                val userManagementType = intent?.getStringExtra("userManagementType") ?: "userManagement"
+                if (userManagementType == "userManagement") {
+                    memberList = ArrayList(users.map { it.userData })
+                } else {
+                    val batchName = intent?.getStringExtra("batchName")
+                    memberList = ArrayList(users.filter { it.userData["batch"] == batchName }.map { it.userData })
+                }
+
+                filterUsersAndShowBasedOnCurrentUser()
+            }.onFailure {
+                Toast.makeText(this@UserManagement, it.message ?: "Failed to sync users", Toast.LENGTH_SHORT).show()
+                progressBar?.stopAnimation()
+            }
+        }
+        
         CoroutineScope(Dispatchers.IO).launch {
             //check in intent if user management type is userManagement or there is no key in intent then we fetch all users
-            var userManagementType=intent?.getStringExtra("userManagementType")?:"userManagement"
-            if(userManagementType=="userManagement") {
+            var userManagementType = intent?.getStringExtra("userManagementType") ?: "userManagement"
+            if (userManagementType == "userManagement") {
                 val localUsers = database.userDao().getAllUsers()
                 if (localUsers.isNotEmpty()) {
                     memberList = ArrayList(localUsers.map { it.userData })
-                    runOnUiThread {
-                        adapter.updateList(memberList)
-                        progressBar?.stopAnimation()
-                    }
-                } else {
-                    fetchUsersFromServer()
+                    
+                    filterUsersAndShowBasedOnCurrentUser()
+                   
                 }
-            }
-            else{
-                var batchName=intent?.getStringExtra("batchName")
-                toolbar.title="User Management\n$batchName"
-                var localBatchMembers=database.userDao().getAllUsersOfBatch(batchName)
-                if(localBatchMembers.isNotEmpty()){
-                    memberList=ArrayList(localBatchMembers.map { it.userData })
-                    runOnUiThread {
-                        adapter.updateList(memberList)
-                        progressBar?.stopAnimation()
-                    }
+                // Trigger background sync
+                userOperationViewModel.triggerUserSync(LoginUserDataHolder.token)
+            } else {
+                var batchName = intent?.getStringExtra("batchName")
+                runOnUiThread { toolbar.title = "$batchName" }
+                var localBatchMembers = database.userDao().getAllUsersOfBatch(batchName)
+                if (localBatchMembers.isNotEmpty()) {
+                    memberList = ArrayList(localBatchMembers.map { it.userData })
+                    filterUsersAndShowBasedOnCurrentUser()
                 }
+                // Trigger background sync
+                userOperationViewModel.triggerUserSync(LoginUserDataHolder.token)
             }
+        }
+    }
+
+    private fun filterUsersAndShowBasedOnCurrentUser() {
+        //now we have to filter list on basis of current user role and department
+        if(LoginUserDataHolder.loginUserData?.get("role")=="faculty"){
+            memberList=ArrayList(memberList.filter { it["department"]==LoginUserDataHolder.loginUserData?.get("department")
+             && it["role"]=="student"})
+        }
+        else if(LoginUserDataHolder.loginUserData?.get("role")=="hod"){
+            memberList=ArrayList(memberList.filter { it["department"]==LoginUserDataHolder.loginUserData?.get("department")
+             && it["role"] in listOf("faculty","student","reception","security guard")})
+        }
+        runOnUiThread {
+            adapter.updateList(memberList)
+            progressBar?.stopAnimation()
+            filterMembers()
         }
     }
 
     private fun fetchUsersFromServer() {
         runOnUiThread { progressBar?.startProgressBar() }
-        var callToGetMember = RetrofitClient.instance.getMembersForUserManagement(LoginUserDataHolder.token)
-        callToGetMember.enqueue(object : Callback<ArrayList<HashMap<String,String>>> {
-            override fun onResponse(
-                call: Call<ArrayList<HashMap<String,String>>?>,
-                response: Response<ArrayList<HashMap<String,String>>?>
-            ) {
-                if (response.isSuccessful) {
-                    val fetchedUsers = response.body()!!
-                    CoroutineScope(Dispatchers.IO).launch {
-                        database.userDao().deleteAllUsers()
-                        val entities = fetchedUsers.map { UserEntity(it["email"] ?: "", it) }.filter { it.email.isNotEmpty() }
-                        database.userDao().insertAll(entities)
-                        memberList = ArrayList(entities.map { it.userData })
-                        runOnUiThread {
-                            adapter.updateList(memberList)
-                            filterMembers()
-                            progressBar?.stopAnimation()
-                        }
-                    }
-                } else {
-                    var errorMessage= LoginUserDataHolder.getErrorMessage(response)
-                    runOnUiThread {
-                        Toast.makeText(this@UserManagement, errorMessage, Toast.LENGTH_SHORT).show()
-                        progressBar?.stopAnimation()
-                    }
-                }
-            }
-
-            override fun onFailure(
-                call: Call<ArrayList<HashMap<String,String>>?>,
-                t: Throwable
-            ) {
-                runOnUiThread {
-                    progressBar?.stopAnimation()
-                    Toast.makeText(this@UserManagement, "Error", Toast.LENGTH_SHORT).show()
-                }
-            }
-
-        })
+        userOperationViewModel.triggerUserSync(LoginUserDataHolder.token)
     }
 
     private fun updateSelectionUI(selectedCount: Int) {
@@ -336,6 +335,9 @@ class UserManagement : BaseActivity() {
                             emails.forEach { email ->
                                 database.userDao().deleteUserByEmail(email)
                             }
+                            
+                            // Trigger sync to ensure parity after batch deletion
+                            userOperationViewModel.triggerUserSync(LoginUserDataHolder.token)
                         }
                     } else {
                         val errorMessage = LoginUserDataHolder.getErrorMessage(response)

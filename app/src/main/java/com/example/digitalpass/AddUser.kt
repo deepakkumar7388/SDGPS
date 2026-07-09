@@ -83,7 +83,7 @@ class AddUser : BaseActivity() {
 
         if(LoginUserDataHolder.loginUserData?.get("role")=="admin")campusSpinner.visibility=View.VISIBLE
 
-        fetchCampusAndDepartment()
+        fetchCampus()
         setupSpinnerListeners()
 
         backButton.setOnClickListener {
@@ -159,39 +159,44 @@ class AddUser : BaseActivity() {
         batchSpinner.visibility = visibility
     }
 
-    private fun fetchCampusAndDepartment() {
+    private fun fetchCampus() {
         progressBar.startProgressBar()
-        CoroutineScope(Dispatchers.IO).launch {
-            val call = RetrofitClient.instance.getCampusAndDepartment(LoginUserDataHolder.token)
-            call.enqueue(object : Callback<HashMap<String, ArrayList<String>>> {
-                override fun onResponse(
-                    call: Call<HashMap<String, ArrayList<String>>?>, response: Response<HashMap<String, ArrayList<String>>?>
-                ) {
-                    if (response.isSuccessful) {
-                        val campusAndDepartment = response.body()
-                        val campusList = campusAndDepartment?.get("campus") ?: arrayListOf()
-                        val departmentList = campusAndDepartment?.get("department") ?: arrayListOf()
-
-                        campusList.add(0, "Select Campus")
-                        departmentList.add(0, "Select Department")
-
-                        campusSpinner.adapter = ArrayAdapter(this@AddUser, android.R.layout.simple_spinner_item, campusList)
-                        departmentSpinner.adapter = ArrayAdapter(this@AddUser, android.R.layout.simple_spinner_item, departmentList)
-                    } else {
-                        val errorMessage = LoginUserDataHolder.getErrorMessage(response)
-                        Toast.makeText(this@AddUser, errorMessage, Toast.LENGTH_LONG).show()
-                    }
-                    progressBar.stopAnimation()
-                }
-
-                override fun onFailure(
-                    call: Call<HashMap<String, ArrayList<String>>?>, t: Throwable
-                ) {
-                    progressBar.stopAnimation()
-                    Toast.makeText(this@AddUser, "Something went wrong: ${t.message}", Toast.LENGTH_SHORT).show()
-                }
-            })
+        
+        userOperationViewModel.campuses.removeObservers(this)
+        userOperationViewModel.campuses.observe(this) { result ->
+            result.onSuccess { campusList ->
+                val campuses = ArrayList(campusList)
+                campuses.add(0, "Select Campus")
+                campusSpinner.adapter = ArrayAdapter(this@AddUser, android.R.layout.simple_spinner_item, campuses)
+                
+                fetchDepartments()
+            }.onFailure {
+                progressBar.stopAnimation()
+                Toast.makeText(this@AddUser, it.message ?: "Failed to load campuses", Toast.LENGTH_SHORT).show()
+            }
+            userOperationViewModel.campuses.removeObservers(this)
         }
+        
+        userOperationViewModel.fetchCampuses(LoginUserDataHolder.token)
+    }
+
+    private fun fetchDepartments() {
+        progressBar.startProgressBar()
+        
+        userOperationViewModel.departments.removeObservers(this)
+        userOperationViewModel.departments.observe(this) { result ->
+            result.onSuccess { departmentList ->
+                val departments = ArrayList(departmentList)
+                departments.add(0, "Select Department")
+                departmentSpinner.adapter = ArrayAdapter(this@AddUser, android.R.layout.simple_spinner_item, departments)
+            }.onFailure {
+                Toast.makeText(this@AddUser, it.message ?: "Failed to load departments", Toast.LENGTH_SHORT).show()
+            }
+            progressBar.stopAnimation()
+            userOperationViewModel.departments.removeObservers(this)
+        }
+        
+        userOperationViewModel.fetchDepartments(LoginUserDataHolder.token, "userManagement")
     }
 
     private fun fetchRole() {
@@ -307,6 +312,8 @@ class AddUser : BaseActivity() {
                     if (response.isSuccessful) {
                         runOnUiThread {
                             Toast.makeText(this@AddUser, "User Added Successfully", Toast.LENGTH_SHORT).show()
+                            //trigger sync
+                            userOperationViewModel.triggerUserSync(LoginUserDataHolder.token)
                             finish() // Close activity on success
                         }
                     } else {

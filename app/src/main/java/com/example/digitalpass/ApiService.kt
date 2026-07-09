@@ -13,8 +13,6 @@ import retrofit2.http.Part
 interface ApiService {
     @POST("/login-user")
     fun loginUser(@Body loginData: LoginData): Call<HashMap<String, String>>
-    @POST("/get-campus-and-department")
-    fun getCampusAndDepartment(@Body token: String): Call<HashMap<String, ArrayList<String>>>
     @POST("/get-role-based-on-department")
     fun getRoleBasedOnDepartment(@Body department: HashMap<String, String>): Call<ArrayList<String>>
     @POST("/get-batches-based-on-department")
@@ -37,9 +35,6 @@ interface ApiService {
 
     @POST("/edit-batch")
     fun editBatch(@Body batchData: BatchData): Call<ResponseBody>
-    @POST("/get-all-members-for-level")
-    fun getAllMemberForLevel(@Body loginData: HashMap<String, String>): Call<ArrayList<HashMap<String, String>>>
-
     @POST("/get-data-for-batch")
     fun getDataForBatch(@Body loginData: String): Call<HashMap<String, ArrayList<String>>>
 
@@ -47,7 +42,13 @@ interface ApiService {
     fun addNewBatch(@Body batchData: BatchData): Call<ResponseBody>
 
     @POST("/get-members-for-user-management")
-    fun getMembersForUserManagement(@Body loginData: String): Call<ArrayList<HashMap<String,String>>>
+    fun getMembersForUserManagement(@Body loginData: HashMap<String, Any>): Call<SyncUserResponse>
+
+    @POST("/sync-gate-passes")
+    fun syncGatePasses(@Body requestPayload: HashMap<String, Any>): Call<SyncGatePassResponse>
+
+    @POST("/sync-visitor-passes")
+    fun syncVisitorPasses(@Body requestPayload: HashMap<String, Any>): Call<SyncVisitorResponse>
 
     @POST("/remove-user")
     fun removeUser(@Body hashToRemoveUser: HashMap<String,Any>): Call<ResponseBody>
@@ -83,11 +84,6 @@ interface ApiService {
 
     @POST("/check-permission-of-security-guard")
     fun checkPermissionOfSecurityGuard(@Body token: String): Call<ResponseBody>
-
-    @POST("/get-all-member-for-visitor")
-    fun getAllMemberForVisitor(@Body token: String): Call<ArrayList<HashMap<String, String>>>
-
-
     @Multipart
     @POST("/enter-visitor")
     fun enterVisitor(
@@ -125,11 +121,11 @@ interface ApiService {
     @POST("/edit-gate-pass-by-self-user")
     fun editGatePassBySelfUser(@Body hashToEditGatePassBySelfUser: HashMap<String, String>): Call<ResponseBody>
 
-    @POST("/get-self-user-gate-pass")
-    fun getSelfUserGatePass(@Body token: String): Call<ArrayList<HashMap<String,String>>>
+//    @POST("/get-self-user-gate-pass")
+//    fun getSelfUserGatePass(@Body token: String): Call<ArrayList<HashMap<String,String>>>
 
-    @POST("/get-recent-gate-pass-list")
-    fun getRecentGatePassList(@Body token: String):Call<ArrayList<HashMap<String,String>>>
+//    @POST("/get-recent-gate-pass-list")
+//    fun getRecentGatePassList(@Body token: String):Call<ArrayList<HashMap<String,String>>>
 
     @POST("/reject-gate-pass")
     fun rejectGatePass(@Body hashToRejectGatePass: HashMap<String, String>): Call<ResponseBody>
@@ -146,10 +142,10 @@ interface ApiService {
     @POST("/logout")
     fun logout(@Body logoutData: HashMap<String, String>): Call<ResponseBody>
 
-    @POST("/get-visitor-list-history")
-    fun getVisitorListHistory(@Body hashToGetVisitorListHistory: HashMap<String, String>): Call<ArrayList<HashMap<String, String>>>
-    @POST("/get-gate-pass-list-history")
-    fun getGatePassListHistory(@Body hashToGetGatePassListHistory: HashMap<String, String>): Call<ArrayList<HashMap<String, String>>>
+//    @POST("/get-visitor-list-history")
+//    fun getVisitorListHistory(@Body hashToGetVisitorListHistory: HashMap<String, String>): Call<ArrayList<HashMap<String, String>>>
+//    @POST("/get-gate-pass-list-history")
+//    fun getGatePassListHistory(@Body hashToGetGatePassListHistory: HashMap<String, String>): Call<ArrayList<HashMap<String, String>>>
 
     @POST("/send-verification-code")
     fun sendVerificationCode(@Body email: String): Call<ResponseBody>
@@ -183,7 +179,7 @@ interface ApiService {
     ): Call<HashMap<String,String>>
 
     @POST("/get-all-department")
-    fun getAllDepartment(): Call<ArrayList<String>>
+    fun getAllDepartment(@Body typeHash: HashMap<String,String>): Call<ArrayList<String>>
 
     @POST("get-previous-gate-passes-of-user")
     fun getPreviousGatePassesOfUser(@Body email: String): Call<ArrayList<HashMap<String,String>>>

@@ -79,8 +79,8 @@ class SecurityGuard : BaseActivity() {
 
         var refreshLayout=findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipeRefreshLayout)
         refreshLayout.setOnRefreshListener {
-            LoginUserDataHolder.getVisitorList()
-            LoginUserDataHolder.getGatePassList()
+            passSyncViewModel.triggerGatePassSync(LoginUserDataHolder.token)
+            passSyncViewModel.triggerVisitorSync(LoginUserDataHolder.token)
             refreshLayout.isRefreshing=false
         }
 
@@ -155,8 +155,7 @@ class SecurityGuard : BaseActivity() {
         LoginUserDataHolder.gatePassListAdapter = gatePassAdapter
 
         // Fetch initial data
-        LoginUserDataHolder.getVisitorList()
-        LoginUserDataHolder.getGatePassList()
+        setupPassSyncAndObserve()
 
         // Setup Toggle Group and Transitions
         val toggleGroup = findViewById<MaterialButtonToggleGroup>(R.id.toggleGroup)
@@ -246,6 +245,42 @@ class SecurityGuard : BaseActivity() {
         }
     }
 
+
+    private fun setupPassSyncAndObserve() {
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        val todayStart = "$today 00:00:00"
+        val todayEnd = "$today 23:59:59"
+
+        passSyncViewModel.activeGatePasses.observe(this) { list ->
+            val maps = ArrayList(list.map { it.passData })
+            LoginUserDataHolder.gatePassList = maps
+            gatePassAdapter.updateList(maps)
+        }
+
+        passSyncViewModel.activeVisitors.observe(this) { list ->
+            val maps = ArrayList(list.map { it.visitorData })
+            LoginUserDataHolder.visitorList = maps
+            visitorAdapter.updateList(maps)
+        }
+
+        passSyncViewModel.gatePassSyncState.observe(this) { result ->
+            result.onSuccess {
+                passSyncViewModel.loadActiveGatePasses(todayStart, todayEnd)
+            }
+        }
+
+        passSyncViewModel.visitorSyncState.observe(this) { result ->
+            result.onSuccess {
+                passSyncViewModel.loadActiveVisitors(todayStart, todayEnd)
+            }
+        }
+
+        passSyncViewModel.loadActiveGatePasses(todayStart, todayEnd)
+        passSyncViewModel.loadActiveVisitors(todayStart, todayEnd)
+
+        passSyncViewModel.triggerGatePassSync(LoginUserDataHolder.token)
+        passSyncViewModel.triggerVisitorSync(LoginUserDataHolder.token)
+    }
 
     override fun onResume(){
         super.onResume()

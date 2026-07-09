@@ -106,6 +106,33 @@ class UserHistory : BaseActivity() {
         gatePassAdapter.listTypeByDate = "history"
         recyclerView.adapter = visitorAdapter
 
+        // Setup observers for local cache
+        passSyncViewModel.historicalGatePasses.observe(this) { list ->
+            dateGatePassList = ArrayList(list.map { it.passData })
+            gatePassAdapter.updateList(dateGatePassList)
+            recentGatePassList = dateGatePassList
+            progressBar?.stopAnimation()
+        }
+
+        passSyncViewModel.historicalVisitors.observe(this) { list ->
+            dateVisitorList = ArrayList(list.map { it.visitorData })
+            visitorAdapter.updateList(dateVisitorList)
+            recentVisitorList = dateVisitorList
+            progressBar?.stopAnimation()
+        }
+
+        passSyncViewModel.rangeGatePasses.observe(this) { list ->
+            dateGatePassList = ArrayList(list.map { it.passData })
+            gatePassAdapter.updateList(dateGatePassList)
+            progressBar?.stopAnimation()
+        }
+
+        passSyncViewModel.rangeVisitors.observe(this) { list ->
+            dateVisitorList = ArrayList(list.map { it.visitorData })
+            visitorAdapter.updateList(dateVisitorList)
+            progressBar?.stopAnimation()
+        }
+
         //get visitorList and gatePassList
         getVisitorList(fromTimeStamp, toTimeStamp)
         getGatePassList(fromTimeStamp, toTimeStamp)
@@ -233,26 +260,23 @@ class UserHistory : BaseActivity() {
     }
 
     private fun getAllDepartment(){
-        RetrofitClient.instance.getAllDepartment().enqueue(object : Callback<ArrayList<String>>{
-            override fun onResponse(
-                call: Call<ArrayList<String>?>,
-                response: Response<ArrayList<String>?>
-            ) {
-                if(response.isSuccessful){
-                    var departmentList=response.body()?:ArrayList()
-                    departmentList.add(0,"All Department")
-                    departmentSpinner?.adapter=ArrayAdapter(this@UserHistory, android.R.layout.simple_spinner_dropdown_item, departmentList)
-                }
+        progressBar?.startProgressBar()
+        
+        userOperationViewModel.departments.removeObservers(this)
+        userOperationViewModel.departments.observe(this) { result ->
+            result.onSuccess { departmentList ->
+                val departments = ArrayList(departmentList)
+                departments.add(0,"All Department")
+                departmentSpinner?.adapter = ArrayAdapter(this@UserHistory, android.R.layout.simple_spinner_dropdown_item, departments)
+            }.onFailure {
+                Toast.makeText(this@UserHistory, "Something went wrong: ${it.message}", Toast.LENGTH_SHORT).show()
+                departmentSpinner?.adapter = ArrayAdapter(this@UserHistory, android.R.layout.simple_spinner_dropdown_item, arrayListOf("All Department"))
             }
-
-            override fun onFailure(
-                call: Call<ArrayList<String>?>,
-                t: Throwable
-            ) {
-                Toast.makeText(this@UserHistory, "Something went wrong", Toast.LENGTH_SHORT).show()
-                departmentSpinner?.adapter=ArrayAdapter(this@UserHistory, android.R.layout.simple_spinner_dropdown_item, arrayListOf("All Department"))
-            }
-        })
+            progressBar?.stopAnimation()
+            userOperationViewModel.departments.removeObservers(this)
+        }
+        
+        userOperationViewModel.fetchDepartments(LoginUserDataHolder.token, "history")
     }
 
     private fun updateButtonStyles(isVisitor: Boolean) {
@@ -279,68 +303,28 @@ class UserHistory : BaseActivity() {
 
     private fun getVisitorList(fromDate: Long, toDate: Long) {
         progressBar?.startProgressBar()
-        var callToGetVisitorList = RetrofitClient.instance.getVisitorListHistory(
-            hashMapOf(
-                "token" to LoginUserDataHolder.token,
-                "fromDate" to getDate(fromDate),
-                "toDate" to getDate(toDate)
-            )
-        )
-
-        callToGetVisitorList.enqueue(object : Callback<ArrayList<HashMap<String, String>>> {
-            override fun onResponse(
-                call: Call<ArrayList<HashMap<String, String>>?>,
-                response: Response<ArrayList<HashMap<String, String>>?>
-            ) {
-                if (response.isSuccessful) {
-                    dateVisitorList = response.body() ?: ArrayList()
-                    visitorAdapter.updateList(dateVisitorList)
-                    if (fromDate == 0L || toDate == 0L) recentVisitorList = dateVisitorList
-                } else Toast.makeText(this@UserHistory, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_SHORT).show()
-
-                progressBar?.stopAnimation()
-            }
-
-            override fun onFailure(
-                call: Call<ArrayList<HashMap<String, String>>?>,
-                t: Throwable
-            ) {
-                progressBar?.stopAnimation()
-                Toast.makeText(this@UserHistory, "Something went wrong", Toast.LENGTH_SHORT).show()
-            }
-        })
+        if (fromDate == 0L || toDate == 0L) {
+            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+            val todayStart = "$today 00:00:00"
+            passSyncViewModel.loadHistoricalVisitors(todayStart)
+        } else {
+            val startDate = getDate(fromDate) + " 00:00:00"
+            val endDate = getDate(toDate) + " 23:59:59"
+            passSyncViewModel.loadVisitorsByRange(startDate, endDate)
+        }
     }
 
     private fun getGatePassList(fromDate: Long, toDate: Long) {
         progressBar?.startProgressBar()
-        var callToGetGatePassList = RetrofitClient.instance.getGatePassListHistory(
-            hashMapOf(
-                "token" to LoginUserDataHolder.token,
-                "fromDate" to getDate(fromDate),
-                "toDate" to getDate(toDate)
-            )
-        )
-        callToGetGatePassList.enqueue(object : Callback<ArrayList<HashMap<String, String>>> {
-            override fun onResponse(
-                call: Call<ArrayList<HashMap<String, String>>?>,
-                response: Response<ArrayList<HashMap<String, String>>?>
-            ) {
-                if (response.isSuccessful) {
-                    dateGatePassList = response.body() ?: ArrayList()
-                    gatePassAdapter.updateList(dateGatePassList)
-                    if (fromDate == 0L || toDate == 0L) recentGatePassList = dateGatePassList
-                } else Toast.makeText(this@UserHistory, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_SHORT).show()
-                progressBar?.stopAnimation()
-            }
-
-            override fun onFailure(
-                call: Call<ArrayList<HashMap<String, String>>?>,
-                t: Throwable
-            ) {
-                progressBar?.stopAnimation()
-                Toast.makeText(this@UserHistory, "Something went wrong", Toast.LENGTH_SHORT).show()
-            }
-        })
+        if (fromDate == 0L || toDate == 0L) {
+            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+            val todayStart = "$today 00:00:00"
+            passSyncViewModel.loadHistoricalGatePasses(todayStart)
+        } else {
+            val startDate = getDate(fromDate) + " 00:00:00"
+            val endDate = getDate(toDate) + " 23:59:59"
+            passSyncViewModel.loadGatePassesByRange(startDate, endDate)
+        }
     }
 
     private fun setupSearchBar() {

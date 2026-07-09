@@ -74,6 +74,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         loginButton.setOnClickListener {
+
             val emailSt = email.text.toString()
             val passwordSt = password.text.toString()
 
@@ -150,6 +151,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun triggerSecureGatewayAnimation(role: String?) {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        imm.hideSoftInputFromWindow(currentFocus?.windowToken, 0)
+        //set the enable false for email,password,forget password and login
+        findViewById<EditText>(R.id.loginEmail).isEnabled = false
+        findViewById<EditText>(R.id.loginPassword).isEnabled = false
+        findViewById<TextView>(R.id.forgetPassword).isEnabled = false
+        findViewById<Button>(R.id.loginButton).isEnabled = false
+
         val gatewayOverlay = findViewById<View>(R.id.gatewayOverlay)
         val leftGate = findViewById<View>(R.id.leftGate)
         val rightGate = findViewById<View>(R.id.rightGate)

@@ -15,7 +15,9 @@ import android.view.View
 import android.view.animation.AnimationUtils
 import android.widget.FrameLayout
 import android.widget.ImageView
+import androidx.lifecycle.ViewModelProvider
 import com.example.digitalpass.database.AppDatabase
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 
 open class BaseActivity : AppCompatActivity() {
@@ -119,5 +121,51 @@ open class BaseActivity : AppCompatActivity() {
                 notificationBadge.visibility = View.GONE
             }
         }
+    }
+
+    protected val userOperationViewModel: UserOperationViewModel by lazy {
+        val factory = UserOperationViewModelFactory(
+            this,
+            AppDatabase.getDatabase(this).campusDao(),
+            AppDatabase.getDatabase(this).departmentDao(),
+            AppDatabase.getDatabase(this).userDao(),
+            RetrofitClient.instance
+        )
+        ViewModelProvider(this, factory)[UserOperationViewModel::class.java]
+    }
+
+    protected val passSyncViewModel: PassSyncViewModel by lazy {
+        val factory = PassSyncViewModelFactory(this)
+        ViewModelProvider(this, factory)[PassSyncViewModel::class.java]
+    }
+
+    protected fun fetchAndShowCampusSelection(
+        progressBar: CustomProgressBar?,
+        onCampusSelected: (String) -> Unit
+    ) {
+        progressBar?.startProgressBar()
+        
+        // Remove existing observers to prevent multiple dialogs if clicked multiple times
+        userOperationViewModel.campuses.removeObservers(this)
+        
+        userOperationViewModel.campuses.observe(this) { result ->
+            progressBar?.stopAnimation()
+            result.onSuccess { campuses ->
+                val campusArray = campuses.toTypedArray()
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Select Destination Campus")
+                    .setItems(campusArray) { _, which ->
+                        onCampusSelected(campusArray[which])
+                    }
+                    .show()
+            }.onFailure {
+                Toast.makeText(this, it.message ?: "Failed to load campuses", Toast.LENGTH_SHORT).show()
+            }
+            
+            // Remove observer after receiving result so it doesn't trigger on config changes
+            userOperationViewModel.campuses.removeObservers(this)
+        }
+        
+        userOperationViewModel.fetchCampuses(LoginUserDataHolder.token)
     }
 }

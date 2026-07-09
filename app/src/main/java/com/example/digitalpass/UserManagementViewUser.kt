@@ -141,7 +141,7 @@ class UserManagementViewUser : BaseActivity() {
             fatherPhone.setText(user["fatherphone"])
         }
 
-        fetchCampusAndDepartment()
+        fetchCampus()
 
 
 
@@ -151,47 +151,52 @@ class UserManagementViewUser : BaseActivity() {
     }
 
 
-    private fun fetchCampusAndDepartment() {
-
+    private fun fetchCampus() {
         progressBar?.startProgressBar()
-        CoroutineScope(Dispatchers.IO).launch {
-            val call = RetrofitClient.instance.getCampusAndDepartment(LoginUserDataHolder.token)
-            call.enqueue(object : Callback<HashMap<String, ArrayList<String>>> {
-                override fun onResponse(
-                    call: Call<HashMap<String, ArrayList<String>>?>, response: Response<HashMap<String, ArrayList<String>>?>
-                ) {
-                    progressBar?.stopAnimation()
-                    if (response.isSuccessful) {
-                        val campusAndDepartment = response.body()
-                        val campusList = campusAndDepartment?.get("campus") ?: arrayListOf()
-                        val departmentList = campusAndDepartment?.get("department") ?: arrayListOf()
-
-                        campusList.add(0, "Select Campus")
-                        departmentList.add(0, "Select Department")
-
-                        campusSpinner.adapter = ArrayAdapter(this@UserManagementViewUser, android.R.layout.simple_spinner_item, campusList)
-                        departmentSpinner.adapter = ArrayAdapter(this@UserManagementViewUser, android.R.layout.simple_spinner_item, departmentList)
-
-                        if(LoginUserDataHolder.loginUserData?.get("role") =="admin"){
-                            campusSpinner.setSelection(campusList.indexOf(user["campus"]))
-                        }
-                        departmentSpinner.setSelection(departmentList.indexOf(user["department"]))
-
-                        fetchRole()
-
-                    } else {
-                        val errorMessage = LoginUserDataHolder.getErrorMessage(response)
-                        Toast.makeText(this@UserManagementViewUser, errorMessage, Toast.LENGTH_LONG).show()
-                    }
+        
+        userOperationViewModel.campuses.removeObservers(this)
+        userOperationViewModel.campuses.observe(this) { result ->
+            result.onSuccess { campusList ->
+                val campuses = ArrayList(campusList)
+                campuses.add(0, "Select Campus")
+                campusSpinner.adapter = ArrayAdapter(this@UserManagementViewUser, android.R.layout.simple_spinner_item, campuses)
+                
+                if(LoginUserDataHolder.loginUserData?.get("role") =="admin"){
+                    val campusIndex = campuses.indexOf(user["campus"])
+                    if(campusIndex >= 0) campusSpinner.setSelection(campusIndex)
                 }
-
-                override fun onFailure(
-                    call: Call<HashMap<String, ArrayList<String>>?>, t: Throwable
-                ) {
-                    Toast.makeText(this@UserManagementViewUser, "Something went wrong: ${t.message}", Toast.LENGTH_SHORT).show()
-                }
-            })
+                
+                fetchDepartments()
+            }.onFailure {
+                progressBar?.stopAnimation()
+                Toast.makeText(this@UserManagementViewUser, it.message ?: "Failed to load campuses", Toast.LENGTH_SHORT).show()
+            }
+            userOperationViewModel.campuses.removeObservers(this)
         }
+        
+        userOperationViewModel.fetchCampuses(LoginUserDataHolder.token)
+    }
+
+    private fun fetchDepartments() {
+        userOperationViewModel.departments.removeObservers(this)
+        userOperationViewModel.departments.observe(this) { result ->
+            result.onSuccess { departmentList ->
+                val departments = ArrayList(departmentList)
+                departments.add(0, "Select Department")
+                departmentSpinner.adapter = ArrayAdapter(this@UserManagementViewUser, android.R.layout.simple_spinner_item, departments)
+                
+                val deptIndex = departments.indexOf(user["department"])
+                if(deptIndex >= 0) departmentSpinner.setSelection(deptIndex)
+                
+                fetchRole()
+            }.onFailure {
+                progressBar?.stopAnimation()
+                Toast.makeText(this@UserManagementViewUser, it.message ?: "Failed to load departments", Toast.LENGTH_SHORT).show()
+            }
+            userOperationViewModel.departments.removeObservers(this)
+        }
+        
+        userOperationViewModel.fetchDepartments(LoginUserDataHolder.token, "userManagement")
     }
 
 

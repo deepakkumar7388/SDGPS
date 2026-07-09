@@ -34,6 +34,9 @@ object LoginUserDataHolder {
 
      const val PREFS_NAME = "DigitalPassPrefs"
     private const val KEY_TOKEN  = "token"
+    private const val KEY_LAST_USER_SYNC_TIME = "lastUserSyncTime"
+    private const val KEY_LAST_GATE_PASS_SYNC_TIME = "lastGatePassSyncTime"
+    private const val KEY_LAST_VISITOR_SYNC_TIME = "lastVisitorSyncTime"
     // All loginUserData keys we want to persist:
     private val USER_DATA_KEYS = listOf(
         "name", "email", "phone", "role", "campus", "department",
@@ -54,6 +57,36 @@ object LoginUserDataHolder {
             }
         }
         editor.apply()
+    }
+
+    fun getLastUserSyncTime(context: Context): Long {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getLong(KEY_LAST_USER_SYNC_TIME, 0L)
+    }
+
+    fun setLastUserSyncTime(context: Context, time: Long) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putLong(KEY_LAST_USER_SYNC_TIME, time).apply()
+    }
+
+    fun getLastGatePassSyncTime(context: Context): Long {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getLong(KEY_LAST_GATE_PASS_SYNC_TIME, 0L)
+    }
+
+    fun setLastGatePassSyncTime(context: Context, time: Long) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putLong(KEY_LAST_GATE_PASS_SYNC_TIME, time).apply()
+    }
+
+    fun getLastVisitorSyncTime(context: Context): Long {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getLong(KEY_LAST_VISITOR_SYNC_TIME, 0L)
+    }
+
+    fun setLastVisitorSyncTime(context: Context, time: Long) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putLong(KEY_LAST_VISITOR_SYNC_TIME, time).apply()
     }
 
     /**
@@ -259,29 +292,29 @@ object LoginUserDataHolder {
 
 
 
-    fun getGatePassList() {
-        //get gate pass list
-        val call = RetrofitClient.instance.getRecentGatePassList(token)
-        call.enqueue(object : Callback<ArrayList<HashMap<String, String>>> {
-            override fun onResponse(
-                call: Call<ArrayList<HashMap<String, String>>?>,
-                response: Response<ArrayList<HashMap<String, String>>?>
-            ) {
-                if (response.isSuccessful) {
-                    gatePassList = response.body() ?: ArrayList()
-                    //update copy of gatePassList
-                    gatePassListAdapter?.updateList(ArrayList(gatePassList))
-                }
-            }
-
-            override fun onFailure(
-                call: Call<ArrayList<HashMap<String, String>>?>,
-                t: Throwable
-            ) {
-                Log.d("TAG", "getGatePassList onFailure: ${t.message}")
-            }
-        })
-    }
+//    fun getGatePassList() {
+//        //get gate pass list
+//        val call = RetrofitClient.instance.getRecentGatePassList(token)
+//        call.enqueue(object : Callback<ArrayList<HashMap<String, String>>> {
+//            override fun onResponse(
+//                call: Call<ArrayList<HashMap<String, String>>?>,
+//                response: Response<ArrayList<HashMap<String, String>>?>
+//            ) {
+//                if (response.isSuccessful) {
+//                    gatePassList = response.body() ?: ArrayList()
+//                    //update copy of gatePassList
+//                    gatePassListAdapter?.updateList(ArrayList(gatePassList))
+//                }
+//            }
+//
+//            override fun onFailure(
+//                call: Call<ArrayList<HashMap<String, String>>?>,
+//                t: Throwable
+//            ) {
+//                Log.d("TAG", "getGatePassList onFailure: ${t.message}")
+//            }
+//        })
+//    }
 
     fun insertNewGatePass(gatePassId:String){
         //now get the new insert gate pass

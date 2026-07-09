@@ -75,7 +75,7 @@ class Reception : BaseActivity() {
 
         var swipeRefresh=findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
         swipeRefresh.setOnRefreshListener {
-            LoginUserDataHolder.getVisitorList()
+            passSyncViewModel.triggerVisitorSync(LoginUserDataHolder.token)
             swipeRefresh.isRefreshing=false
         }
 
@@ -134,7 +134,7 @@ class Reception : BaseActivity() {
 
         //setup these adapter in LoginUserDataHolder
         LoginUserDataHolder.visitorListAdapter=visitorAdapter
-        LoginUserDataHolder.getVisitorList()
+        setupPassSyncAndObserve()
 
     }
 
@@ -150,6 +150,27 @@ class Reception : BaseActivity() {
                 return true
             }
         })
+    }
+
+    private fun setupPassSyncAndObserve() {
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        val todayStart = "$today 00:00:00"
+        val todayEnd = "$today 23:59:59"
+
+        passSyncViewModel.activeVisitors.observe(this) { list ->
+            val maps = ArrayList(list.map { it.visitorData })
+            LoginUserDataHolder.visitorList = maps
+            visitorAdapter.updateList(maps)
+        }
+
+        passSyncViewModel.visitorSyncState.observe(this) { result ->
+            result.onSuccess {
+                passSyncViewModel.loadActiveVisitors(todayStart, todayEnd)
+            }
+        }
+
+        passSyncViewModel.loadActiveVisitors(todayStart, todayEnd)
+        passSyncViewModel.triggerVisitorSync(LoginUserDataHolder.token)
     }
 
     override fun onResume(){

@@ -180,48 +180,44 @@ class EnterVisitor : BaseActivity() {
 
     private fun getMemberToMeetVisitor(){
         progressBar?.startProgressBar()
-            var call=RetrofitClient.instance.getAllMemberForVisitor(LoginUserDataHolder.token)
-            call.enqueue(object : Callback<ArrayList<HashMap<String,String>>>{
-                override fun onResponse(
-                    call: Call<ArrayList<HashMap<String, String>>?>,
-                    response: Response<ArrayList<HashMap<String, String>>?>
-                ) {
-                    progressBar?.stopAnimation()
-                    if (response.isSuccessful){
-                        memberList=response.body()?: ArrayList()
-                        if(visitorData==null)adapter.updateList(memberList)
-                        else{
-                            //we have to find only one user from memberList where member email==visitorData meetEmail
-                            for (member in memberList) {
-                                if (member["email"]==visitorData!!["meetEmail"]){
-                                    selectedMember=member
-                                    break
-                                }
-                            }
-                            //if selected member is null then we will set default first member
-                            if(selectedMember==null){
-                                if(memberList.isNotEmpty())selectedMember= memberList[0]
-                            }
-                            //update adapter with selectedMember
-                         adapter.updateList(arrayListOf(selectedMember) as ArrayList<HashMap<String, String>>)
-
+        CoroutineScope(Dispatchers.IO).launch {
+            val allLocalUsers = com.example.digitalpass.database.AppDatabase.getDatabase(this@EnterVisitor).userDao().getAllUsers()
+            val isAdmin = LoginUserDataHolder.loginUserData?.get("role") == "admin"
+            val currentUserCampus = LoginUserDataHolder.loginUserData?.get("campus") ?: ""
+            val validRoles = listOf("principal", "hod", "faculty", "reception")
+            
+            val filteredUsers = allLocalUsers.map { it.userData }.filter { user ->
+                val role = user["role"] ?: ""
+                val campus = user["campus"] ?: ""
+                validRoles.contains(role) && (isAdmin || campus == currentUserCampus)
+            }
+            
+            val resultList = ArrayList(filteredUsers)
+            
+            runOnUiThread {
+                progressBar?.stopAnimation()
+                memberList = resultList
+                if(visitorData==null) adapter.updateList(memberList)
+                else {
+                    //we have to find only one user from memberList where member email==visitorData meetEmail
+                    for (member in memberList) {
+                        if (member["email"]==visitorData!!["meetEmail"]){
+                            selectedMember=member
+                            break
                         }
-                        
-                        //setup department spinner
-                        setupDepartmentSpinner()
                     }
-                    else Toast.makeText(this@EnterVisitor, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_SHORT).show()
+                    //if selected member is null then we will set default first member
+                    if(selectedMember==null){
+                        if(memberList.isNotEmpty()) selectedMember= memberList[0]
+                    }
+                    //update adapter with selectedMember
+                    adapter.updateList(arrayListOf(selectedMember) as ArrayList<HashMap<String, String>>)
                 }
-
-                override fun onFailure(
-                    call: Call<ArrayList<HashMap<String, String>>?>,
-                    t: Throwable
-                ) {
-                    Toast.makeText(this@EnterVisitor, "Something went wrong", Toast.LENGTH_SHORT).show()
-                }
-
-            })
-
+                
+                //setup department spinner
+                setupDepartmentSpinner()
+            }
+        }
     }
 
     private fun setupDepartmentSpinner(){

@@ -107,6 +107,10 @@ class LevelForBatch : BaseActivity() {
     fun getAllUsers(){
         //members are selected and return the list of selected member to AddBatch activity
         doneButton.setOnClickListener {
+            if(selectedMemberAdapter.levelData.size==0){
+                Toast.makeText(this,"Please select any approver",Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             val returnIntent = intent
             returnIntent.putExtra("levelData", selectedMemberAdapter.levelData)
             setResult(RESULT_OK, returnIntent)
@@ -116,56 +120,40 @@ class LevelForBatch : BaseActivity() {
         progressBar.startProgressBar()
 
         CoroutineScope(Dispatchers.IO).launch {
-            var callForAllUsers = RetrofitClient.instance.getAllMemberForLevel(hashMapOf(
-                "token" to LoginUserDataHolder.token,
-                "campus" to LoginUserDataHolder.campusForBatchOperation
-            ))
-            callForAllUsers.enqueue(object : Callback<ArrayList<HashMap<String, String>>> {
-                override fun onResponse(
-                    call: Call<ArrayList<HashMap<String, String>>?>,
-                    response: Response<ArrayList<HashMap<String, String>>?>
-                ) {
+            val allLocalUsers = com.example.digitalpass.database.AppDatabase.getDatabase(this@LevelForBatch).userDao().getAllUsers()
+            val targetCampus = LoginUserDataHolder.campusForBatchOperation
+            val validRoles = listOf("principal", "hod", "faculty")
+            
+            val filteredUsers = allLocalUsers.map { it.userData }.filter { user ->
+                val role = user["role"] ?: ""
+                val campus = user["campus"] ?: ""
+                campus == targetCampus && validRoles.contains(role)
+            }
+            
+            val resultList = ArrayList(filteredUsers)
+            
+            runOnUiThread {
+                unselectedList = resultList
+                if (intent.getStringExtra("levelType") == "unlevel"){
+                    unselectedMemberAdapter.updateList(unselectedList)
+                }
+                else {
+                    var levelData = intent.getStringArrayListExtra("levelData")!!
 
-                    if (response.isSuccessful) {
-                        unselectedList = response.body()!!
-                        if (intent.getStringExtra("levelType") == "unlevel"){
-                            unselectedMemberAdapter.updateList(
-                                unselectedList
-                            )
+                    //filter selected members from unselected list
+                    val iterator = unselectedList.iterator()
+                    while (iterator.hasNext()) {
+                        val item = iterator.next()
+                        if (levelData.contains(item["email"])) {
+                            selectedList.add(item)
+                            iterator.remove() // Safely remove the item using the iterator
                         }
-                        else {
-                            var levelData = intent.getStringArrayListExtra("levelData")!!
-
-                            //filter selected members from unselected list
-                            val iterator = unselectedList.iterator()
-                            while (iterator.hasNext()) {
-                                val item = iterator.next()
-                                if (levelData.contains(item["email"])) {
-                                    selectedList.add(item)
-                                    iterator.remove() // Safely remove the item using the iterator
-                                }
-                            }
-                            selectedMemberAdapter.updateList(selectedList)
-                            unselectedMemberAdapter.updateList(unselectedList)
-                        }
-
-                    } else {
-                        var errorMessage = LoginUserDataHolder.getErrorMessage(response)
-                        Toast.makeText(this@LevelForBatch, errorMessage, Toast.LENGTH_SHORT).show()
                     }
-
-                    progressBar.stopAnimation()
+                    selectedMemberAdapter.updateList(selectedList)
+                    unselectedMemberAdapter.updateList(unselectedList)
                 }
-
-                override fun onFailure(
-                    call: Call<ArrayList<HashMap<String, String>>?>,
-                    t: Throwable
-                ) {
-                    progressBar.stopAnimation()
-                    Toast.makeText(this@LevelForBatch, t.message, Toast.LENGTH_SHORT).show()
-                }
-
-            })
+                progressBar.stopAnimation()
+            }
         }
     }
 
