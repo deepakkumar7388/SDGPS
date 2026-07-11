@@ -19,8 +19,11 @@ interface GatePassDao {
     @Query("DELETE FROM gate_passes")
     fun deleteAllGatePasses()
 
-    @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.applyDate') >= :todayStart AND json_extract(passData, '$.applyDate') <= :todayEnd AND json_extract(passData, '$.status') IN ('pending', 'approving', 'approved') ORDER BY json_extract(passData, '$.applyDate') DESC")
-    fun getActiveGatePasses(todayStart: String, todayEnd: String): List<GatePassEntity>
+    @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.applyDate') >= :todayStart AND json_extract(passData, '$.applyDate') <= :todayEnd AND json_extract(passData, '$.status') IN ('pending', 'approving', 'approved') AND (json_extract(passData, '$.applyEmail') != :loginUserEmail OR :userRole IN ('principal', 'hod')) ORDER BY json_extract(passData, '$.applyDate') DESC")
+    fun getActiveGatePassesByMember(todayStart: String, todayEnd: String, loginUserEmail: String, userRole: String): List<GatePassEntity>
+
+    @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.applyDate') >= :todayStart AND json_extract(passData, '$.applyDate') <= :todayEnd AND json_extract(passData, '$.status') IN ('approved') ORDER BY json_extract(passData, '$.applyDate') DESC")
+    fun getActiveGatePassesBySecurity(todayStart: String, todayEnd: String): List<GatePassEntity>
 
     @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.applyDate') < :todayStart OR json_extract(passData, '$.status') NOT IN ('pending', 'approving', 'approved') ORDER BY json_extract(passData, '$.applyDate') DESC")
     fun getHistoricalGatePasses(todayStart: String): List<GatePassEntity>

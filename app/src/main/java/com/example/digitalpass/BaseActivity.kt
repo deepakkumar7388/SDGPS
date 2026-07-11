@@ -22,6 +22,34 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 open class BaseActivity : AppCompatActivity() {
 
+    protected val cropImageLauncher = registerForActivityResult(com.canhub.cropper.CropImageContract()) { result ->
+        if (result.isSuccessful) {
+            val uriContent = result.uriContent
+            if (uriContent != null) {
+                CommonOperation.uploadImage(this, uriContent)
+            }
+        } else {
+            Toast.makeText(this, "Crop failed: ${result.error?.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    protected val galleryLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri: android.net.Uri? ->
+        if (uri != null) {
+            val options = com.canhub.cropper.CropImageContractOptions(uri, com.canhub.cropper.CropImageOptions(
+                imageSourceIncludeGallery = false,
+                imageSourceIncludeCamera = false,
+                aspectRatioX = 1,
+                aspectRatioY = 1,
+                fixAspectRatio = true
+            ))
+            cropImageLauncher.launch(options)
+        }
+    }
+
+    fun launchProfileImageUpdate() {
+        galleryLauncher.launch("image/*")
+    }
+
     override fun attachBaseContext(newBase: android.content.Context) {
         val newConfig = android.content.res.Configuration(newBase.resources.configuration)
         newConfig.fontScale = 1.0f

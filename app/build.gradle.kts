@@ -98,4 +98,7 @@ dependencies {
     implementation("androidx.room:room-runtime:$room_version")
     ksp("androidx.room:room-compiler:$room_version")
     implementation("androidx.room:room-ktx:$room_version")
+    
+    // Image Cropper
+    implementation("com.vanniktech:android-image-cropper:4.5.0")
 }

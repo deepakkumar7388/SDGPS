@@ -69,7 +69,13 @@ class GatePassRepository(private val context: Context) {
 
     suspend fun getActiveGatePasses(todayStart: String, todayEnd: String): List<GatePassEntity> {
         return withContext(Dispatchers.IO) {
-            gatePassDao.getActiveGatePasses(todayStart, todayEnd)
+            val userRole = LoginUserDataHolder.loginUserData?.get("role") ?: ""
+            val loginUserEmail = LoginUserDataHolder.loginUserData?.get("email") ?: ""
+
+            if(userRole == "security guard")
+                gatePassDao.getActiveGatePassesBySecurity(todayStart, todayEnd)
+            else 
+                gatePassDao.getActiveGatePassesByMember(todayStart, todayEnd, loginUserEmail, userRole)
         }
     }
 

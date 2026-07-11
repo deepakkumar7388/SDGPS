@@ -49,7 +49,6 @@ class ManagementMember : BaseActivity() {
 
     private lateinit var excelPickerLauncher: ActivityResultLauncher<Intent>
     private lateinit var apkPickerLauncher: ActivityResultLauncher<Intent>
-    private lateinit var galleryLauncher: ActivityResultLauncher<String>
     private lateinit var profileImage: ImageView
     private lateinit var recyclerView: RecyclerView
     private lateinit var visitorAdapter: RecentPassAdapter
@@ -96,12 +95,7 @@ class ManagementMember : BaseActivity() {
 
         progressBar=findViewById(R.id.customProgressBar)
 
-        //create gallery launcher
-        galleryLauncher=registerForActivityResult(ActivityResultContracts.GetContent()){uri:Uri?->
-            if(uri==null)return@registerForActivityResult
-            //upload image to server
-            CommonOperation.uploadImage(this,uri)
-        }
+
 
         // Initialize file picker launcher
         excelPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -141,7 +135,7 @@ class ManagementMember : BaseActivity() {
         
         var editProfilePictureLogo=findViewById<ImageView>(R.id.editProfilePictureLogo)
         editProfilePictureLogo.setOnClickListener {
-            galleryLauncher.launch("image/*")
+            launchProfileImageUpdate()
         }
 
         //applied gate pass of this user

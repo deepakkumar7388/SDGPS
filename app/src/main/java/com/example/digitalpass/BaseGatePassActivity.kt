@@ -2,9 +2,13 @@ package com.example.digitalpass
 
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.example.digitalpass.CommonOperation.logout
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputLayout
 import retrofit2.Call
@@ -103,43 +107,69 @@ abstract class BaseGatePassActivity : BaseActivity() {
     }
 
     private fun showReasonDialog(destinationCampus: String?) {
-        val dialogView = layoutInflater.inflate(R.layout.show_dialog_to_give_aproval_visitor, null)
-        val dialogApplyButton = dialogView.findViewById<Button>(R.id.remarkDoneButton)
-        val reason = dialogView.findViewById<EditText>(R.id.remark)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_apply_gate_pass, null)
+        val dialogApplyButton = dialogView.findViewById<Button>(R.id.applyDialogBtn)
+        val reason = dialogView.findViewById<EditText>(R.id.reasonEditText)
+        val locationProgressBar = dialogView.findViewById<ProgressBar>(R.id.locationProgressBar)
+        val locationIcon = dialogView.findViewById<ImageView>(R.id.locationIcon)
+        val locationStatusText = dialogView.findViewById<TextView>(R.id.locationStatusText)
+        val locationVerificationCard = dialogView.findViewById<com.google.android.material.card.MaterialCardView>(R.id.locationVerificationCard)
 
-        //setup text of button hint for applying gate pass
-        dialogApplyButton.text = "Apply"
-
-        dialogView.findViewById<TextInputLayout>(R.id.nameInputLayout).hint = "Reason for gate pass"
+        var fetchedLocation: android.location.Location? = null
 
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogView)
             .create()
         dialog.show()
 
+        val chipIds = listOf(R.id.chip1, R.id.chip2, R.id.chip3, R.id.chip4)
+        for (id in chipIds) {
+            dialogView.findViewById<com.google.android.material.chip.Chip>(id)?.setOnClickListener { view ->
+                val chip = view as com.google.android.material.chip.Chip
+                reason.setText(chip.text)
+                reason.setSelection(reason.text.length)
+            }
+        }
+
+        requestUserLocation { location ->
+            if (location != null) {
+                fetchedLocation = location
+                locationProgressBar.visibility = android.view.View.GONE
+                locationIcon.visibility = android.view.View.VISIBLE
+                locationIcon.setImageResource(android.R.drawable.checkbox_on_background)
+                locationStatusText.text = "Location Verified"
+                locationStatusText.setTextColor(android.graphics.Color.parseColor("#059669"))
+                locationVerificationCard.setCardBackgroundColor(android.graphics.Color.parseColor("#D1FAE5"))
+                locationVerificationCard.strokeColor = android.graphics.Color.parseColor("#A7F3D0")
+                dialogApplyButton.isEnabled = true
+            } else {
+                locationProgressBar.visibility = android.view.View.GONE
+                locationIcon.visibility = android.view.View.VISIBLE
+                locationIcon.setImageResource(android.R.drawable.ic_dialog_alert)
+                locationStatusText.text = "Location Verification Failed"
+                locationStatusText.setTextColor(android.graphics.Color.parseColor("#DC2626"))
+                locationVerificationCard.setCardBackgroundColor(android.graphics.Color.parseColor("#FEE2E2"))
+                locationVerificationCard.strokeColor = android.graphics.Color.parseColor("#FECACA")
+
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Alert")
+                    .setMessage("Location verification failed. Please check GPS permissions.")
+                    .setNegativeButton("Ok", null)
+                    .show()
+            }
+        }
+
         dialogApplyButton.setOnClickListener {
             if (reason.text.toString().trim() == "") {
                 Toast.makeText(this, "Please enter reason", Toast.LENGTH_SHORT).show()
             } else {
                 dialogApplyButton.isEnabled = false
-                checkLocationAndApply(reason.text.toString().trim(), destinationCampus, dialogApplyButton)
-                dialog.dismiss()
-            }
-        }
-    }
-
-    private fun checkLocationAndApply(reason: String, destinationCampus: String?, dialogApplyButton: Button) {
-        progressBar?.startProgressBar()
-        applyButton?.isEnabled = false
-
-        requestUserLocation { location ->
-            if (location != null) {
-                applyForGatePass(reason, location.latitude.toString(), location.longitude.toString(), destinationCampus, dialogApplyButton)
-            } else {
-                progressBar?.stopAnimation()
-                applyButton?.isEnabled = true
-                dialogApplyButton.isEnabled = true
-                Toast.makeText(this, "Unable to get location. Please ensure GPS is enabled.", Toast.LENGTH_SHORT).show()
+                if (fetchedLocation != null) {
+                    progressBar?.startProgressBar()
+                    applyButton?.isEnabled = false
+                    applyForGatePass(reason.text.toString().trim(), fetchedLocation!!.latitude.toString(), fetchedLocation!!.longitude.toString(), destinationCampus, dialogApplyButton)
+                    dialog.dismiss()
+                }
             }
         }
     }
@@ -168,7 +198,11 @@ abstract class BaseGatePassActivity : BaseActivity() {
                 if (response.isSuccessful) {
                     triggerSuccessAnimation(response.body()!!)
                 } else {
-                    Toast.makeText(this@BaseGatePassActivity, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_SHORT).show()
+                    MaterialAlertDialogBuilder(this@BaseGatePassActivity)
+                        .setTitle("Alert")
+                        .setMessage(LoginUserDataHolder.getErrorMessage(response))
+                        .setNegativeButton("Ok", null)
+                        .show()
                 }
             }
 
@@ -305,10 +339,4 @@ abstract class BaseGatePassActivity : BaseActivity() {
         }.start()
     }
 
-    protected fun getGatePass() {
-        val email = LoginUserDataHolder.loginUserData?.get("email") ?: ""
-        passSyncViewModel.loadSelfGatePasses(email)
-        val token = LoginUserDataHolder.token
-        passSyncViewModel.triggerGatePassSync(token)
-    }
 }

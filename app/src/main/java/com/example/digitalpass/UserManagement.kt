@@ -263,7 +263,7 @@ class UserManagement : BaseActivity() {
                 userOperationViewModel.triggerUserSync(LoginUserDataHolder.token)
             } else {
                 var batchName = intent?.getStringExtra("batchName")
-                runOnUiThread { toolbar.title = "$batchName" }
+                runOnUiThread { toolbar.title = batchName }
                 var localBatchMembers = database.userDao().getAllUsersOfBatch(batchName)
                 if (localBatchMembers.isNotEmpty()) {
                     memberList = ArrayList(localBatchMembers.map { it.userData })
@@ -285,6 +285,8 @@ class UserManagement : BaseActivity() {
             memberList=ArrayList(memberList.filter { it["department"]==LoginUserDataHolder.loginUserData?.get("department")
              && it["role"] in listOf("faculty","student","reception","security guard")})
         }
+        //remove if member from memberList if logged in user email is same
+        memberList=ArrayList(memberList.filter { it["email"]!=LoginUserDataHolder.loginUserData?.get("email") })
         runOnUiThread {
             adapter.updateList(memberList)
             progressBar?.stopAnimation()

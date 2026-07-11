@@ -41,7 +41,6 @@ import retrofit2.Response
 
 
 class Student : BaseGatePassActivity() {
-    private lateinit var galleryLauncher: ActivityResultLauncher<String>
     private lateinit var profileImage: ImageView
     
     override val recyclerViewId = R.id.studentRecyclerView
@@ -57,11 +56,7 @@ class Student : BaseGatePassActivity() {
             insets
         }
 
-        galleryLauncher=registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-            if (uri == null) return@registerForActivityResult
-            // Upload image to server
-            CommonOperation.uploadImage(this,uri)
-        }
+
 
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
 
@@ -82,7 +77,7 @@ class Student : BaseGatePassActivity() {
         
         var editProfilePictureLogo=findViewById<ImageView>(R.id.editProfilePictureLogo)
         editProfilePictureLogo.setOnClickListener {
-            galleryLauncher.launch("image/*")
+            launchProfileImageUpdate()
         }
 
         applyButton = findViewById(R.id.applyForGatePass)

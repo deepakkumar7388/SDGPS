@@ -38,7 +38,6 @@ import retrofit2.Callback
 import retrofit2.Response
 
 class SecurityGuard : BaseActivity() {
-    private lateinit var galleryLauncher: ActivityResultLauncher<String>
     private lateinit var profileImage: ImageView
     private lateinit var recyclerView: RecyclerView
     private lateinit var visitorAdapter: RecentPassAdapter
@@ -84,10 +83,7 @@ class SecurityGuard : BaseActivity() {
             refreshLayout.isRefreshing=false
         }
 
-        galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-            if (uri == null) return@registerForActivityResult
-            CommonOperation.uploadImage(this,uri)
-        }
+
 
         progressBar=findViewById(R.id.customProgressBar)
 
@@ -106,7 +102,7 @@ class SecurityGuard : BaseActivity() {
         
         var editProfilePictureLogo=findViewById<ImageView>(R.id.editProfilePictureLogo)
         editProfilePictureLogo.setOnClickListener {
-            galleryLauncher.launch("image/*")
+            launchProfileImageUpdate()
         }
 
         val enterVisitorButton = findViewById<FloatingActionButton>(R.id.enterVisitorButton)

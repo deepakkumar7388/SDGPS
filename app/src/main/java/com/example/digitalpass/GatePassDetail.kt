@@ -17,6 +17,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.example.digitalpass.database.AppDatabase
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -209,32 +210,14 @@ class GatePassDetail : BaseActivity() {
 
     private fun getPreviousGatePass(){
         progressBar?.startProgressBar()
-        RetrofitClient.instance.getPreviousGatePassesOfUser(gatePass["applyEmail"]!!).enqueue(object : Callback<ArrayList<HashMap<String,String>>>{
-            override fun onResponse(
-                call: Call<ArrayList<HashMap<String, String>>?>,
-                response: Response<ArrayList<HashMap<String, String>>?>
-            ) {
-                progressBar?.stopAnimation()
-                if(response.isSuccessful){
-                    previousGatePassList = response.body()?:ArrayList()
-                    var adapter = RecentPassAdapter("gatePass", previousGatePassList!!)
-                    adapter.listTypeByDate = "previous_gate_pass_history"
-                    adapter.onItemClick = { clickedGatePass ->
-                        showPreviousGatePassDialog(clickedGatePass)
-                    }
-                    recyclerView?.adapter = adapter
-                }
-                else Toast.makeText(this@GatePassDetail, LoginUserDataHolder.getErrorMessage(response),Toast.LENGTH_LONG).show()
-            }
-
-            override fun onFailure(
-                call: Call<ArrayList<HashMap<String, String>>?>,
-                t: Throwable
-            ) {
-                progressBar?.stopAnimation()
-                Toast.makeText(this@GatePassDetail, "Something went wrong",Toast.LENGTH_LONG).show()
-            }
-        })
+        var listOfAllGatePassByThisEmail= AppDatabase.getDatabase(this).gatePassDao().getGatePassesByEmail(gatePass["applyEmail"]?:"")
+        previousGatePassList=ArrayList(listOfAllGatePassByThisEmail.map { it.passData})
+        var adapter = RecentPassAdapter("gatePass", previousGatePassList!!)
+        adapter.listTypeByDate = "previous_gate_pass_history"
+        adapter.onItemClick = { clickedGatePass ->
+            showPreviousGatePassDialog(clickedGatePass)
+        }
+        recyclerView?.adapter = adapter
     }
 
     private fun showPreviousGatePassDialog(passInfo: HashMap<String, String>) {

@@ -136,6 +136,10 @@
             android:name=".NotificationsActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
+        <activity
+            android:name="com.canhub.cropper.CropImageActivity"
+            android:theme="@style/Base.Theme.AppCompat"
+            android:exported="true" />
     </application>
 
 </manifest>

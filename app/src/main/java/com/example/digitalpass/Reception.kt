@@ -37,7 +37,6 @@ import retrofit2.Callback
 import retrofit2.Response
 
 class Reception : BaseActivity() {
-    private lateinit var galleryLauncher: ActivityResultLauncher<String>
     private lateinit var profileImage: ImageView
     private lateinit var recyclerView: RecyclerView
     private lateinit var visitorAdapter: RecentPassAdapter
@@ -80,12 +79,7 @@ class Reception : BaseActivity() {
         }
 
 
-        //create gallery launcher
-        galleryLauncher=registerForActivityResult(ActivityResultContracts.GetContent()){uri:Uri?->
-            if(uri==null)return@registerForActivityResult
-            //upload image to server
-            CommonOperation.uploadImage(this,uri)
-        }
+
 
         //profile data setup
         profileImage = findViewById(R.id.ProfileImage)
@@ -102,7 +96,7 @@ class Reception : BaseActivity() {
         
         var editProfilePictureLogo=findViewById<ImageView>(R.id.editProfilePictureLogo)
         editProfilePictureLogo.setOnClickListener {
-            galleryLauncher.launch("image/*")
+            launchProfileImageUpdate()
         }
 
 
