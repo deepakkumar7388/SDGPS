@@ -197,6 +197,8 @@ class GatePassDetail : BaseActivity() {
             tgRemark.setText(gatePass["tgRemark"])
         }
 
+        setupProgressIndicator()
+
 
 
         //setup gate pass for history
@@ -210,14 +212,21 @@ class GatePassDetail : BaseActivity() {
 
     private fun getPreviousGatePass(){
         progressBar?.startProgressBar()
-        var listOfAllGatePassByThisEmail= AppDatabase.getDatabase(this).gatePassDao().getGatePassesByEmail(gatePass["applyEmail"]?:"")
-        previousGatePassList=ArrayList(listOfAllGatePassByThisEmail.map { it.passData})
-        var adapter = RecentPassAdapter("gatePass", previousGatePassList!!)
-        adapter.listTypeByDate = "previous_gate_pass_history"
-        adapter.onItemClick = { clickedGatePass ->
-            showPreviousGatePassDialog(clickedGatePass)
+        CoroutineScope(Dispatchers.IO).launch {
+            var listOfAllGatePassByThisEmail= AppDatabase.getDatabase(this@GatePassDetail).gatePassDao().getGatePassesByEmail(gatePass["applyEmail"]?:"")
+            val passList=ArrayList(listOfAllGatePassByThisEmail.map { it.passData})
+            
+            launch(Dispatchers.Main) {
+                progressBar?.stopAnimation()
+                previousGatePassList=passList
+                var adapter = RecentPassAdapter("gatePass", previousGatePassList!!)
+                adapter.listTypeByDate = "previous_gate_pass_history"
+                adapter.onItemClick = { clickedGatePass ->
+                    showPreviousGatePassDialog(clickedGatePass)
+                }
+                recyclerView?.adapter = adapter
+            }
         }
-        recyclerView?.adapter = adapter
     }
 
     private fun showPreviousGatePassDialog(passInfo: HashMap<String, String>) {
@@ -528,6 +537,18 @@ class GatePassDetail : BaseActivity() {
 
             }
         }
+    }
+
+    private fun setupProgressIndicator() {
+        val indicator = findViewById<com.example.digitalpass.PremiumProgressIndicator>(R.id.premiumProgressIndicator)
+        if (indicator == null) return
+
+        val applyTime = gatePass["applyDate"] ?: gatePass["applyTime"]
+        val initialApprovalTime = gatePass["initialApprovalTime"]
+        val finalApprovalTime = gatePass["finalApprovalTime"]
+        val exitTime = gatePass["exitTime"]
+
+        indicator.setProgressData(applyTime, initialApprovalTime, finalApprovalTime, exitTime)
     }
 
 }

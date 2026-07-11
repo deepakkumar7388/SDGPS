@@ -49,7 +49,7 @@ class RecentPassAdapter(var listType:String,var recentPassList:ArrayList<HashMap
 
         //make status in uppercase
         holder.status.text=statusVal?.uppercase()
-        if(statusVal=="APPROVING")holder.status.text="In Process"
+        if(statusVal=="approving")holder.status.text="In Process"
         
 
         holder.applyDateTime.visibility=View.VISIBLE

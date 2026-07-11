@@ -118,6 +118,9 @@
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <include layout="@layout/layout_gate_pass_progress"
+                android:id="@+id/progressIndicatorLayout" />
+
             <!-- Pass Details -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
