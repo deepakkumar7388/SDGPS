@@ -107,11 +107,24 @@ class UserHistory : BaseActivity() {
         recyclerView.adapter = visitorAdapter
 
         // Setup observers for local cache
+        val interInstitutionalSwitch = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.interInstitutionalSwitch)
+        
+        passSyncViewModel.historicalInterInstitutional.observe(this) { list ->
+            if (interInstitutionalSwitch?.isChecked == true) {
+                dateGatePassList = ArrayList(list.map { it.passData })
+                gatePassAdapter.updateList(dateGatePassList)
+                recentGatePassList = dateGatePassList
+                progressBar?.stopAnimation()
+            }
+        }
+        
         passSyncViewModel.historicalGatePasses.observe(this) { list ->
-            dateGatePassList = ArrayList(list.map { it.passData })
-            gatePassAdapter.updateList(dateGatePassList)
-            recentGatePassList = dateGatePassList
-            progressBar?.stopAnimation()
+            if (interInstitutionalSwitch?.isChecked != true) {
+                dateGatePassList = ArrayList(list.map { it.passData })
+                gatePassAdapter.updateList(dateGatePassList)
+                recentGatePassList = dateGatePassList
+                progressBar?.stopAnimation()
+            }
         }
 
         passSyncViewModel.historicalVisitors.observe(this) { list ->
@@ -121,16 +134,30 @@ class UserHistory : BaseActivity() {
             progressBar?.stopAnimation()
         }
 
+        passSyncViewModel.rangeInterInstitutional.observe(this) { list ->
+            if (interInstitutionalSwitch?.isChecked == true) {
+                dateGatePassList = ArrayList(list.map { it.passData })
+                gatePassAdapter.updateList(dateGatePassList)
+                progressBar?.stopAnimation()
+            }
+        }
+        
         passSyncViewModel.rangeGatePasses.observe(this) { list ->
-            dateGatePassList = ArrayList(list.map { it.passData })
-            gatePassAdapter.updateList(dateGatePassList)
-            progressBar?.stopAnimation()
+            if (interInstitutionalSwitch?.isChecked != true) {
+                dateGatePassList = ArrayList(list.map { it.passData })
+                gatePassAdapter.updateList(dateGatePassList)
+                progressBar?.stopAnimation()
+            }
         }
 
         passSyncViewModel.rangeVisitors.observe(this) { list ->
             dateVisitorList = ArrayList(list.map { it.visitorData })
             visitorAdapter.updateList(dateVisitorList)
             progressBar?.stopAnimation()
+        }
+
+        interInstitutionalSwitch?.setOnCheckedChangeListener { _, _ ->
+            getGatePassList(fromTimeStamp, toTimeStamp)
         }
 
         //get visitorList and gatePassList
@@ -288,16 +315,20 @@ class UserHistory : BaseActivity() {
         val activeTextColor = android.graphics.Color.WHITE
         val inactiveTextColor = android.graphics.Color.parseColor("#052E92")
 
+        val interInstitutionalSwitch = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.interInstitutionalSwitch)
+        
         if (isVisitor) {
             visitorButton.setBackgroundColor(activeColor)
             visitorButton.setTextColor(activeTextColor)
             gatePassButton.setBackgroundColor(inactiveColor)
             gatePassButton.setTextColor(inactiveTextColor)
+            interInstitutionalSwitch?.visibility = android.view.View.GONE
         } else {
             gatePassButton.setBackgroundColor(activeColor)
             gatePassButton.setTextColor(activeTextColor)
             visitorButton.setBackgroundColor(inactiveColor)
             visitorButton.setTextColor(inactiveTextColor)
+            interInstitutionalSwitch?.visibility = android.view.View.VISIBLE
         }
     }
 
@@ -316,14 +347,24 @@ class UserHistory : BaseActivity() {
 
     private fun getGatePassList(fromDate: Long, toDate: Long) {
         progressBar?.startProgressBar()
+        val interInstitutionalSwitch = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.interInstitutionalSwitch)
+        val isInter = interInstitutionalSwitch?.isChecked == true
         if (fromDate == 0L || toDate == 0L) {
             val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
             val todayStart = "$today 00:00:00"
-            passSyncViewModel.loadHistoricalGatePasses(todayStart)
+            if (isInter) {
+                passSyncViewModel.loadHistoricalInterInstitutionalGatePasses(todayStart)
+            } else {
+                passSyncViewModel.loadHistoricalGatePasses(todayStart)
+            }
         } else {
             val startDate = getDate(fromDate) + " 00:00:00"
             val endDate = getDate(toDate) + " 23:59:59"
-            passSyncViewModel.loadGatePassesByRange(startDate, endDate)
+            if (isInter) {
+                passSyncViewModel.loadInterInstitutionalByRange(startDate, endDate)
+            } else {
+                passSyncViewModel.loadGatePassesByRange(startDate, endDate)
+            }
         }
     }
 

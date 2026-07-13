@@ -213,7 +213,7 @@ class GatePassDetail : BaseActivity() {
     private fun getPreviousGatePass(){
         progressBar?.startProgressBar()
         CoroutineScope(Dispatchers.IO).launch {
-            var listOfAllGatePassByThisEmail= AppDatabase.getDatabase(this@GatePassDetail).gatePassDao().getGatePassesByEmail(gatePass["applyEmail"]?:"")
+            var listOfAllGatePassByThisEmail= AppDatabase.getDatabase(this@GatePassDetail).gatePassDao().getAllGatePassesByEmail(gatePass["applyEmail"]?:"")
             val passList=ArrayList(listOfAllGatePassByThisEmail.map { it.passData})
             
             launch(Dispatchers.Main) {
@@ -270,12 +270,12 @@ class GatePassDetail : BaseActivity() {
             if(approve.text=="Remove"){
                 progressBar?.startProgressBar()
                 approve.isEnabled=false
-                var callToRemove= RetrofitClient.instance.removeGatePassBySelfUser(
-                    hashMapOf(
-                        "token" to LoginUserDataHolder.token,
-                        "gatePassId" to gatePass["gatePassId"]!!
-                    )
+                var hashToRemoveGatePass=hashMapOf(
+                    "token" to LoginUserDataHolder.token,
+                    "gatePassId" to gatePass["gatePassId"]!!
                 )
+                if(gatePass.containsKey("destinationCampus"))hashToRemoveGatePass["destinationCampus"]=gatePass["destinationCampus"]!!
+                var callToRemove= RetrofitClient.instance.removeGatePassBySelfUser(hashToRemoveGatePass)
                 callToRemove.enqueue(object : Callback<ResponseBody> {
                     override fun onResponse(
                         call: Call<ResponseBody?>,
@@ -314,11 +314,13 @@ class GatePassDetail : BaseActivity() {
             }
             progressBar?.startProgressBar()
             approve.isEnabled=false
-            var callToEdit= RetrofitClient.instance.editGatePassBySelfUser(hashMapOf(
+            var hashToEdit=hashMapOf(
                 "token" to LoginUserDataHolder.token,
                 "reason" to reason.text.toString(),
                 "gatePassId" to gatePass["gatePassId"]!!
-            ))
+            )
+            if(gatePass.containsKey("destinationCampus"))hashToEdit["destinationCampus"]=gatePass["destinationCampus"]!!
+            var callToEdit= RetrofitClient.instance.editGatePassBySelfUser(hashToEdit)
             callToEdit.enqueue(object : Callback<ResponseBody> {
                 override fun onResponse(
                     call: Call<ResponseBody?>,
@@ -370,10 +372,18 @@ class GatePassDetail : BaseActivity() {
     private fun rejectGatePass(){
         progressBar?.startProgressBar()
         reject?.isEnabled=false
-        var callToReject= RetrofitClient.instance.rejectGatePass(hashMapOf(
+        var hashToRejectGatePass=hashMapOf(
             "token" to LoginUserDataHolder.token,
             "gatePassId" to gatePass["gatePassId"]!!
-        ))
+        )
+        lateinit var callToReject: Call<ResponseBody>
+        if(gatePass.containsKey("destinationCampus")){
+            hashToRejectGatePass["destinationCampus"]=gatePass["destinationCampus"]!!
+            callToReject= RetrofitClient.instance.rejectInterInstitutionalGatePass(hashToRejectGatePass)
+        }
+        else{
+            callToReject= RetrofitClient.instance.rejectGatePass(hashToRejectGatePass)
+        }
         callToReject.enqueue(object: Callback<ResponseBody> {
             override fun onResponse(
                 call: Call<ResponseBody?>,
@@ -440,7 +450,16 @@ class GatePassDetail : BaseActivity() {
     private fun approveTheGatePass(dataForApproval: HashMap<String, String>){
         progressBar?.startProgressBar()
         approve.isEnabled=false
-        var callToGiveApproval= RetrofitClient.instance.approveGatePass(dataForApproval)
+
+        lateinit var callToGiveApproval: Call<ResponseBody>
+        if(gatePass.containsKey("destinationCampus")){
+            dataForApproval["destinationCampus"]=gatePass["destinationCampus"]!!
+            if(LoginUserDataHolder.loginUserData?.get("role")=="security guard")
+                callToGiveApproval= RetrofitClient.instance.exitInterInstitutionalGatePass(dataForApproval)
+            else callToGiveApproval= RetrofitClient.instance.approveInterInstitutionalGatePassByMember(dataForApproval)
+        }
+
+        else callToGiveApproval= RetrofitClient.instance.approveGatePass(dataForApproval)
         callToGiveApproval.enqueue(object: Callback<ResponseBody> {
             override fun onResponse(
                 call: Call<ResponseBody?>,
@@ -483,7 +502,7 @@ class GatePassDetail : BaseActivity() {
         var hashToEditGatePass = hashMapOf<String, String>()
         //first check there is any changes made in reason for gate pass and tgRemark
         if (gatePass["reason"] != reason.text.toString().trim()) hashToEditGatePass["reason"] = reason.text.toString().trim()
-        if (gatePass["tgRemark"] != tgRemark.text.toString().trim()) hashToEditGatePass["tgRemark"] = tgRemark.text.toString().trim()
+        if ((gatePass["tgRemark"] ?: "") != tgRemark.text.toString().trim()) hashToEditGatePass["tgRemark"] = tgRemark.text.toString().trim()
 
         if (hashToEditGatePass.isEmpty()) {
             Toast.makeText(this, "No changes made", Toast.LENGTH_SHORT).show()
@@ -498,6 +517,7 @@ class GatePassDetail : BaseActivity() {
 
                 hashToEditGatePass["token"] = LoginUserDataHolder.token
                 hashToEditGatePass["gatePassId"] = gatePass["gatePassId"] as String
+                if(gatePass.containsKey("destinationCampus"))hashToEditGatePass["destinationCampus"]=gatePass["destinationCampus"]!!
 
                 var callToEditGatePass = RetrofitClient.instance.editGatePass(hashToEditGatePass)
                 callToEditGatePass.enqueue(object : Callback<ResponseBody> {
@@ -540,15 +560,85 @@ class GatePassDetail : BaseActivity() {
     }
 
     private fun setupProgressIndicator() {
-        val indicator = findViewById<com.example.digitalpass.PremiumProgressIndicator>(R.id.premiumProgressIndicator)
-        if (indicator == null) return
+        val isInterInstitutional = gatePass.containsKey("destinationCampus")
 
-        val applyTime = gatePass["applyDate"] ?: gatePass["applyTime"]
-        val initialApprovalTime = gatePass["initialApprovalTime"]
-        val finalApprovalTime = gatePass["finalApprovalTime"]
-        val exitTime = gatePass["exitTime"]
+        val regularLayout = findViewById<View>(R.id.progressIndicatorLayout)
+        val interLayout = findViewById<View>(R.id.interProgressIndicatorLayout)
+        val activateBtn = findViewById<com.google.android.material.button.MaterialButton>(R.id.activatePassBtn)
 
-        indicator.setProgressData(applyTime, initialApprovalTime, finalApprovalTime, exitTime)
+        if (isInterInstitutional) {
+            regularLayout?.visibility = View.GONE
+            interLayout?.visibility = View.VISIBLE
+            
+            val indicator = findViewById<com.example.digitalpass.PremiumInterProgressIndicator>(R.id.premiumInterProgressIndicator)
+            if (indicator != null) {
+                val applyTime = gatePass["applyDate"] ?: gatePass["applyTime"]
+                val initialApprovalTime = gatePass["initialApprovalTime"]
+                val finalApprovalTime = gatePass["finalApprovalTime"]
+                val sourceExitTime = gatePass["sourceCampusExitTime"]
+                val destEntryTime = gatePass["destinationCampusEntryTime"]
+                val destExitTime = gatePass["destinationCampusExitTime"]
+                val sourceEntryTime = gatePass["sourceCampusReEntryTime"]
+
+                indicator.setProgressData(
+                    applyTime, initialApprovalTime, finalApprovalTime,
+                    sourceExitTime, destEntryTime, destExitTime, sourceEntryTime
+                )
+            }
+            
+            val statusVal = gatePass["status"]
+            val passActivity = gatePass["passActivity"]
+            if (statusVal == "Entered into destination campus" && passActivity == "inactive" && intent.getStringExtra("operationType") == "self") {
+                activateBtn?.visibility = View.VISIBLE
+                activateBtn?.setOnClickListener {
+                    activateInterInstitutionalGatePass()
+                }
+            } else {
+                activateBtn?.visibility = View.GONE
+            }
+        } else {
+            interLayout?.visibility = View.GONE
+            regularLayout?.visibility = View.VISIBLE
+            activateBtn?.visibility = View.GONE
+
+            val indicator = findViewById<com.example.digitalpass.PremiumProgressIndicator>(R.id.premiumProgressIndicator)
+            if (indicator != null) {
+                val applyTime = gatePass["applyDate"] ?: gatePass["applyTime"]
+                val initialApprovalTime = gatePass["initialApprovalTime"]
+                val finalApprovalTime = gatePass["finalApprovalTime"]
+                val exitTime = gatePass["exitTime"]
+
+                indicator.setProgressData(applyTime, initialApprovalTime, finalApprovalTime, exitTime)
+            }
+        }
+    }
+
+    private fun activateInterInstitutionalGatePass() {
+        progressBar?.startProgressBar()
+        val requestBody = HashMap<String, String>()
+        requestBody["token"] = LoginUserDataHolder.token
+        requestBody["gatePassId"] = gatePass["gatePassId"] ?: ""
+
+        RetrofitClient.instance.activateInterInstitutionalGatePass(requestBody)
+            .enqueue(object : Callback<ResponseBody> {
+                override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                    progressBar?.stopAnimation()
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@GatePassDetail, "Pass Activated Successfully", Toast.LENGTH_SHORT).show()
+                        gatePass["passActivity"] = "active"
+                        gatePass["status"] = "Enterd into destination campus"
+                        // refresh UI
+                        setupProgressIndicator()
+                    } else {
+                        Toast.makeText(this@GatePassDetail, "Failed to activate pass", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                    progressBar?.stopAnimation()
+                    Toast.makeText(this@GatePassDetail, "Network Error", Toast.LENGTH_SHORT).show()
+                }
+            })
     }
 
 }

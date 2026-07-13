@@ -80,6 +80,7 @@ class SecurityGuard : BaseActivity() {
         refreshLayout.setOnRefreshListener {
             passSyncViewModel.triggerGatePassSync(LoginUserDataHolder.token)
             passSyncViewModel.triggerVisitorSync(LoginUserDataHolder.token)
+            passSyncViewModel.triggerInterInstitutionalSync(LoginUserDataHolder.token)
             refreshLayout.isRefreshing=false
         }
 
@@ -204,16 +205,20 @@ class SecurityGuard : BaseActivity() {
         val activeTextColor = android.graphics.Color.WHITE
         val inactiveTextColor = android.graphics.Color.parseColor("#052E92")
 
+        val interInstitutionalSwitch = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.interInstitutionalSwitch)
+        
         if (isVisitor) {
             visitorButton.setBackgroundColor(activeColor)
             visitorButton.setTextColor(activeTextColor)
             gatePassButton.setBackgroundColor(inactiveColor)
             gatePassButton.setTextColor(inactiveTextColor)
+            interInstitutionalSwitch?.visibility = android.view.View.GONE
         } else {
             gatePassButton.setBackgroundColor(activeColor)
             gatePassButton.setTextColor(activeTextColor)
             visitorButton.setBackgroundColor(inactiveColor)
             visitorButton.setTextColor(inactiveTextColor)
+            interInstitutionalSwitch?.visibility = android.view.View.VISIBLE
         }
     }
 
@@ -247,10 +252,53 @@ class SecurityGuard : BaseActivity() {
         val todayStart = "$today 00:00:00"
         val todayEnd = "$today 23:59:59"
 
+        val interInstitutionalSwitch = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.interInstitutionalSwitch)
+        
+        passSyncViewModel.activeInterInstitutional.observe(this) { list ->
+            if (interInstitutionalSwitch?.isChecked == true) {
+                val maps = ArrayList(list.map { it.passData })
+                LoginUserDataHolder.gatePassList = maps
+                gatePassAdapter.updateList(maps)
+            }
+        }
+        
+        passSyncViewModel.interInstitutionalSyncState.observe(this) { result ->
+            result.onSuccess {
+                passSyncViewModel.loadActiveInterInstitutionalGatePasses(todayStart, todayEnd)
+            }
+        }
+
         passSyncViewModel.activeGatePasses.observe(this) { list ->
-            val maps = ArrayList(list.map { it.passData })
-            LoginUserDataHolder.gatePassList = maps
-            gatePassAdapter.updateList(maps)
+            if (interInstitutionalSwitch?.isChecked != true) {
+                val maps = ArrayList(list.map { it.passData })
+                LoginUserDataHolder.gatePassList = maps
+                gatePassAdapter.updateList(maps)
+            }
+        }
+        
+        passSyncViewModel.gatePassSyncState.observe(this) { result ->
+            result.onSuccess {
+                passSyncViewModel.loadActiveGatePasses(todayStart, todayEnd)
+            }
+        }
+
+        passSyncViewModel.loadActiveInterInstitutionalGatePasses(todayStart, todayEnd)
+        passSyncViewModel.triggerInterInstitutionalSync(LoginUserDataHolder.token)
+        passSyncViewModel.loadActiveGatePasses(todayStart, todayEnd)
+        passSyncViewModel.triggerGatePassSync(LoginUserDataHolder.token)
+
+        interInstitutionalSwitch?.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                val list = passSyncViewModel.activeInterInstitutional.value ?: emptyList()
+                val maps = ArrayList(list.map { it.passData })
+                LoginUserDataHolder.gatePassList = maps
+                gatePassAdapter.updateList(maps)
+            } else {
+                val list = passSyncViewModel.activeGatePasses.value ?: emptyList()
+                val maps = ArrayList(list.map { it.passData })
+                LoginUserDataHolder.gatePassList = maps
+                gatePassAdapter.updateList(maps)
+            }
         }
 
         passSyncViewModel.activeVisitors.observe(this) { list ->
@@ -259,22 +307,13 @@ class SecurityGuard : BaseActivity() {
             visitorAdapter.updateList(maps)
         }
 
-        passSyncViewModel.gatePassSyncState.observe(this) { result ->
-            result.onSuccess {
-                passSyncViewModel.loadActiveGatePasses(todayStart, todayEnd)
-            }
-        }
-
         passSyncViewModel.visitorSyncState.observe(this) { result ->
             result.onSuccess {
                 passSyncViewModel.loadActiveVisitors(todayStart, todayEnd)
             }
         }
 
-        passSyncViewModel.loadActiveGatePasses(todayStart, todayEnd)
         passSyncViewModel.loadActiveVisitors(todayStart, todayEnd)
-
-        passSyncViewModel.triggerGatePassSync(LoginUserDataHolder.token)
         passSyncViewModel.triggerVisitorSync(LoginUserDataHolder.token)
     }
 

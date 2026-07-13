@@ -350,22 +350,47 @@ object LoginUserDataHolder {
             }
         })
     }
-    fun updateGatePass(operation:String,data:JSONObject) {
+    fun updateGatePassStatusAndFetch(gatePassId: String) {
+        val callToGetGatePass = RetrofitClient.instance.getRecentUpdatedGatePass(hashMapOf(
+            "token" to token,
+            "gatePassId" to gatePassId
+        ))
+        callToGetGatePass.enqueue(object : Callback<HashMap<String, String>> {
+            override fun onResponse(
+                call: Call<HashMap<String, String>?>,
+                response: Response<HashMap<String, String>?>
+            ) {
+                if(response.isSuccessful){
+                    val updatedGatePass = response.body() ?: return
+                    val position = gatePassList.indexOfFirst { it["gatePassId"] == updatedGatePass["gatePassId"] }
+                    if (position != -1) {
+                        gatePassList[position] = updatedGatePass
+                        filterAndUpdateItem(updatedGatePass)
+                    } else {
+                        gatePassList.add(0, updatedGatePass)
+                        val nameStr = updatedGatePass["name"] ?: ""
+                        if(listType=="gatePass" && nameStr.contains(searchQuery, ignoreCase = true)){
+                            gatePassListAdapter?.insertItem(updatedGatePass)
+                        }
+                    }
+                }
+            }
+
+            override fun onFailure(
+                call: Call<HashMap<String, String>?>,
+                t: Throwable
+            ) {
+                Log.d("TAG", "updateGatePass onFailure: ${t.message}")
+            }
+        })
+    }
+
+    fun updateGatePassRemark(data: JSONObject) {
         CoroutineScope(Dispatchers.Main).launch {
-
-            //first we will get position of gatePass with this data["gatePassId"]
             val position = gatePassList.indexOfFirst { it["gatePassId"] == data.getString("gatePassId") }
-
-            if(position != -1){
-                if(operation=="updateRemark"){
-                    //then check if there is any key in data like reason or tgRemark
-                    if(data.has("reason")) gatePassList[position]["reason"] = data.getString("reason")
-                    if(data.has("tgRemark")) gatePassList[position]["tgRemark"] = data.getString("tgRemark")
-                }
-                else{
-                    if(data.has("status")) gatePassList[position]["status"] = data.getString("status")
-                }
-                //update this gatePass in gatePassList
+            if (position != -1) {
+                if (data.has("reason")) gatePassList[position]["reason"] = data.getString("reason")
+                if (data.has("tgRemark")) gatePassList[position]["tgRemark"] = data.getString("tgRemark")
                 filterAndUpdateItem(gatePassList[position])
             }
         }

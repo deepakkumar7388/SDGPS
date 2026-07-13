@@ -8,8 +8,10 @@ class PassSyncViewModelFactory(private val context: Context) : ViewModelProvider
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PassSyncViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
+            val database = com.example.digitalpass.database.AppDatabase.getDatabase(context)
             return PassSyncViewModel(
                 GatePassRepository(context),
+                InterInstitutionalGatePassRepository(database.interInstitutionalGatePassDao(), context),
                 VisitorRepository(context)
             ) as T
         }

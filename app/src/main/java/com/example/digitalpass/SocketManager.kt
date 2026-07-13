@@ -45,14 +45,27 @@ object SocketManager {
         socket.on("gatePassInsert"){args ->
             var data=args[0] as JSONObject
             LoginUserDataHolder.insertNewGatePass(data.getString("gatePassId"))
-            }
+        }
         socket.on("gatePassUpdate") { args ->
             var data = args[0] as JSONObject
-            LoginUserDataHolder.updateGatePass("updateRemark",data)
+            LoginUserDataHolder.updateGatePassRemark(data)
         }
         socket.on("gatePassStatusUpdate"){args ->
             var data=args[0] as JSONObject
-            LoginUserDataHolder.updateGatePass("updateStatus",data)
+            LoginUserDataHolder.updateGatePassStatusAndFetch(data.getString("gatePassId"))
+        }
+
+        socket.on("interInstitutionalGatePassInsert"){args ->
+            var data=args[0] as JSONObject
+            LoginUserDataHolder.insertNewGatePass(data.getString("gatePassId"))
+        }
+        socket.on("interInstitutionalGatePassUpdate") { args ->
+            var data = args[0] as JSONObject
+            LoginUserDataHolder.updateGatePassRemark(data)
+        }
+        socket.on("interInstitutionalGatePassStatusUpdate"){args ->
+            var data=args[0] as JSONObject
+            LoginUserDataHolder.updateGatePassStatusAndFetch(data.getString("gatePassId"))
         }
     }
 

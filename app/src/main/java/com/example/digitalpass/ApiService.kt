@@ -47,6 +47,9 @@ interface ApiService {
     @POST("/sync-gate-passes")
     fun syncGatePasses(@Body requestPayload: HashMap<String, Any>): Call<SyncGatePassResponse>
 
+    @POST("/sync-inter-institutional-gate-passes")
+    fun syncInterInstitutionalGatePasses(@Body requestPayload: HashMap<String, Any>): Call<SyncInterInstitutionalGatePassResponse>
+
     @POST("/sync-visitor-passes")
     fun syncVisitorPasses(@Body requestPayload: HashMap<String, Any>): Call<SyncVisitorResponse>
 
@@ -129,9 +132,18 @@ interface ApiService {
 
     @POST("/reject-gate-pass")
     fun rejectGatePass(@Body hashToRejectGatePass: HashMap<String, String>): Call<ResponseBody>
+    @POST("/reject-interInstitutional-gate-pass")
+    fun rejectInterInstitutionalGatePass(@Body hashToRejectGatePass: HashMap<String, String>): Call<ResponseBody>
 
     @POST("/approve-gate-pass")
     fun approveGatePass(@Body hashToApproveGatePass: HashMap<String, String>): Call<ResponseBody>
+    @POST("/approve-interInstitutional-gate-pass-by-member")
+    fun approveInterInstitutionalGatePassByMember(@Body hashToApproveGatePass: HashMap<String, String>): Call<ResponseBody>
+    @POST("/exit-interInstitutional-gate-pass")
+    fun exitInterInstitutionalGatePass(@Body requestBody: HashMap<String, String>): Call<ResponseBody>
+
+    @POST("/activate-interInstitutional-gate-pass")
+    fun activateInterInstitutionalGatePass(@Body requestBody: HashMap<String, String>): Call<ResponseBody>
 
     @POST("/edit-gate-pass")
     fun editGatePass(@Body hashToEditGatePass: HashMap<String, String>): Call<ResponseBody>

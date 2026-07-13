@@ -42,40 +42,85 @@ abstract class BaseGatePassActivity : BaseActivity() {
         adapter = RecentPassAdapter("selfGatePass", gatePassList)
         recyclerView.adapter = adapter
 
-        passSyncViewModel.selfGatePasses.observe(this) { list ->
-            progressBar?.stopAnimation()
-            swipeRefreshLayout?.isRefreshing = false
-            gatePassList.clear()
-            for (gp in list) {
-                gatePassList.add(HashMap(gp.passData))
+        val interInstitutionalSwitch = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.interInstitutionalSwitch)
+        
+        passSyncViewModel.selfInterInstitutional.observe(this) { list ->
+            if (interInstitutionalSwitch?.isChecked == true) {
+                progressBar?.stopAnimation()
+                swipeRefreshLayout?.isRefreshing = false
+                gatePassList.clear()
+                gatePassList.addAll(list.map { HashMap(it.passData) })
+                adapter.updateList(gatePassList)
             }
-            adapter.updateList(gatePassList)
+        }
+
+        passSyncViewModel.interInstitutionalSyncState.observe(this) { result ->
+            result.onSuccess {
+                val email = LoginUserDataHolder.loginUserData?.get("email") ?: ""
+                passSyncViewModel.loadSelfInterInstitutional(email)
+                swipeRefreshLayout?.isRefreshing = false
+            }.onFailure {
+                if (interInstitutionalSwitch?.isChecked == true) {
+                    progressBar?.stopAnimation()
+                    swipeRefreshLayout?.isRefreshing = false
+                    Toast.makeText(this, it.message ?: "Failed to sync passes", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        passSyncViewModel.selfGatePasses.observe(this) { list ->
+            if (interInstitutionalSwitch?.isChecked != true) {
+                progressBar?.stopAnimation()
+                swipeRefreshLayout?.isRefreshing = false
+                gatePassList.clear()
+                gatePassList.addAll(list.map { HashMap(it.passData) })
+                adapter.updateList(gatePassList)
+            }
         }
 
         passSyncViewModel.gatePassSyncState.observe(this) { result ->
             result.onSuccess {
                 val email = LoginUserDataHolder.loginUserData?.get("email") ?: ""
                 passSyncViewModel.loadSelfGatePasses(email)
-            }.onFailure {
-                progressBar?.stopAnimation()
                 swipeRefreshLayout?.isRefreshing = false
-                Toast.makeText(this, it.message ?: "Failed to sync passes", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                if (interInstitutionalSwitch?.isChecked != true) {
+                    progressBar?.stopAnimation()
+                    swipeRefreshLayout?.isRefreshing = false
+                    Toast.makeText(this, it.message ?: "Failed to sync passes", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
         swipeRefreshLayout?.setOnRefreshListener {
-            val token = LoginUserDataHolder.token
-            passSyncViewModel.triggerGatePassSync(token)
+                passSyncViewModel.triggerInterInstitutionalSync(LoginUserDataHolder.token)
+            passSyncViewModel.triggerGatePassSync(LoginUserDataHolder.token)
         }
 
         val email = LoginUserDataHolder.loginUserData?.get("email") ?: ""
         if (swipeRefreshLayout?.isRefreshing != true) {
             progressBar?.startProgressBar()
         }
-        passSyncViewModel.loadSelfGatePasses(email)
-
+        
         val token = LoginUserDataHolder.token
+        passSyncViewModel.loadSelfInterInstitutional(email)
+        passSyncViewModel.triggerInterInstitutionalSync(token)
+        passSyncViewModel.loadSelfGatePasses(email)
         passSyncViewModel.triggerGatePassSync(token)
+
+        interInstitutionalSwitch?.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                val currentList = passSyncViewModel.selfInterInstitutional.value ?: emptyList()
+                gatePassList.clear()
+                gatePassList.addAll(currentList.map { HashMap(it.passData) })
+                adapter.updateList(gatePassList)
+            } else {
+                val currentList = passSyncViewModel.selfGatePasses.value ?: emptyList()
+                gatePassList.clear()
+                gatePassList.addAll(currentList.map { HashMap(it.passData) })
+                adapter.updateList(gatePassList)
+            }
+        }
 
         applyButton?.setOnClickListener {
             if (LoginUserDataHolder.loginUserData?.get("img")?.trim() == "") {

@@ -15,6 +15,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun campusDao(): CampusDao
     abstract fun departmentDao(): DepartmentDao
     abstract fun gatePassDao(): GatePassDao
+    abstract fun interInstitutionalGatePassDao(): InterInstitutionalGatePassDao
     abstract fun visitorDao(): VisitorDao
 
     companion object {

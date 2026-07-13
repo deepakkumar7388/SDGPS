@@ -158,6 +158,18 @@
 
             </com.google.android.material.button.MaterialButtonToggleGroup>
 
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/interInstitutionalSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginEnd="24dp"
+                android:text="Inter-Institutional"
+                android:textColor="#052E92"
+                android:textStyle="bold"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/membersRecyclerView"
                 android:layout_width="match_parent"
