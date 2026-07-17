@@ -94,10 +94,11 @@ const Batches = () => {
       const students = data?.student || [];
       const others = data?.member || [];
       
-      const usersData = await getMembersForUserManagement(token);
-      setAllUsers(usersData || []);
+      const usersResponse = await getMembersForUserManagement(token);
+      const usersData = usersResponse.updatedUsers || usersResponse || [];
+      setAllUsers(usersData);
       const batchCounts = {};
-      (usersData || []).forEach(u => {
+      usersData.forEach(u => {
         if (u.batch) {
           batchCounts[u.batch] = (batchCounts[u.batch] || 0) + 1;
         }

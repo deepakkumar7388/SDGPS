@@ -468,10 +468,9 @@ class GatePassDetail : BaseActivity() {
                 progressBar?.stopAnimation()
                 approve.isEnabled=true
                 if(response.isSuccessful) {
-                    if(LoginUserDataHolder.loginUserData?.get("role")=="security guard")
-                        Toast.makeText(this@GatePassDetail,"Exited Successfully",Toast.LENGTH_SHORT).show()
-                    else Toast.makeText(this@GatePassDetail,"Gate Pass Approved Successfully",Toast.LENGTH_SHORT).show()
-
+                    Toast.makeText(this@GatePassDetail,LoginUserDataHolder.getSuccessMessage(
+                        response as Response<ResponseBody>
+                    ),Toast.LENGTH_SHORT).show()
                     finish()
                 }
                 else Toast.makeText(
@@ -572,13 +571,23 @@ class GatePassDetail : BaseActivity() {
             
             val indicator = findViewById<com.example.digitalpass.PremiumInterProgressIndicator>(R.id.premiumInterProgressIndicator)
             if (indicator != null) {
-                val applyTime = gatePass["applyDate"] ?: gatePass["applyTime"]
+                val applyTime = gatePass["applyDate"] ?: ""
                 val initialApprovalTime = gatePass["initialApprovalTime"]
                 val finalApprovalTime = gatePass["finalApprovalTime"]
                 val sourceExitTime = gatePass["sourceCampusExitTime"]
                 val destEntryTime = gatePass["destinationCampusEntryTime"]
                 val destExitTime = gatePass["destinationCampusExitTime"]
                 val sourceEntryTime = gatePass["sourceCampusReEntryTime"]
+
+                //setup approve button text according to gate pass status and current security guard and campus
+                if(LoginUserDataHolder.loginUserData?.get("role")=="security guard") {
+                    if (gatePass["campus"] == LoginUserDataHolder.loginUserData?.get("campus")) {
+                        if (gatePass["status"] != "approved") approve.text = "Enter"
+                    } else {
+                        if (gatePass["status"] == "Exited from source campus") approve.text =
+                            "Enter"
+                    }
+                }
 
                 indicator.setProgressData(
                     applyTime, initialApprovalTime, finalApprovalTime,
@@ -603,7 +612,7 @@ class GatePassDetail : BaseActivity() {
 
             val indicator = findViewById<com.example.digitalpass.PremiumProgressIndicator>(R.id.premiumProgressIndicator)
             if (indicator != null) {
-                val applyTime = gatePass["applyDate"] ?: gatePass["applyTime"]
+                val applyTime = gatePass["applyDate"] ?:""
                 val initialApprovalTime = gatePass["initialApprovalTime"]
                 val finalApprovalTime = gatePass["finalApprovalTime"]
                 val exitTime = gatePass["exitTime"]
@@ -626,7 +635,7 @@ class GatePassDetail : BaseActivity() {
                     if (response.isSuccessful) {
                         Toast.makeText(this@GatePassDetail, "Pass Activated Successfully", Toast.LENGTH_SHORT).show()
                         gatePass["passActivity"] = "active"
-                        gatePass["status"] = "Enterd into destination campus"
+                        gatePass["status"] = "Entered into destination campus"
                         // refresh UI
                         setupProgressIndicator()
                     } else {

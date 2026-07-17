@@ -97,11 +97,11 @@ export const getRecentVisitorList = async (token) => {
 };
 
 // USER MANAGEMENT
-export const getMembersForUserManagement = async (token) => {
+export const getMembersForUserManagement = async (token, lastSyncTime = 0, offset = 0, limit = 500) => {
   const response = await fetch(`${BASE_URL}/get-members-for-user-management`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(token),
+    body: JSON.stringify({ token, lastSyncTime, offset, limit }),
   });
   if (!response.ok) throw new Error('Failed to fetch users');
   return response.json();

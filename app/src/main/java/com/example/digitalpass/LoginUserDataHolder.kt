@@ -164,8 +164,26 @@ object LoginUserDataHolder {
         }
 
         return errorMessage
+        }
 
+    fun getSuccessMessage(response: Response<ResponseBody>): String {
+    val successMessage = try {
+        // Read the body as a string.
+        val bodyString = response.body()?.string()
+
+        if (bodyString != null) {
+            val jsonObject = JSONObject(bodyString)
+            jsonObject.getString("message") // Extract the value of the "message" key
+        } else {
+            "Action successful" // Fallback message
+        }
+    } catch (e: Exception) {
+        "Error parsing success response"
     }
+    
+    return successMessage
+}
+
 
     fun getURL(img: String?):String{
         //Return the cloudinary URL by generating user img
