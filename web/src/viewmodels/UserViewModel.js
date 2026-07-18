@@ -2,10 +2,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../database/db';
 import { UserRepository } from '../repositories/UserRepository';
 
+const EMPTY_ARRAY = [];
+
 export const useUsers = () => {
-  // Returns a reactive stream of all users
-  const users = useLiveQuery(() => db.users.toArray(), []);
-  return users;
+  return useLiveQuery(() => db.users.toArray(), []) || EMPTY_ARRAY;
 };
 
 export const triggerUserSync = (token) => {

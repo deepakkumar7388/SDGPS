@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { getRecentGatePassList, getRecentVisitorList, approveGatePass, rejectGatePass, editGatePass, removeGatePassBySelfUser, meetVisitor, checkPermissionOfSecurityGuard, uploadProfileImage } from '../services/api';
+import { approveGatePass, rejectGatePass, editGatePass, removeGatePassBySelfUser, meetVisitor, checkPermissionOfSecurityGuard, uploadProfileImage } from '../services/api';
+import { useActiveGatePasses, useActiveInterInstitutionalGatePasses, useActiveVisitors, triggerGatePassSync, triggerInterInstitutionalGatePassSync, triggerVisitorSync } from '../viewmodels/PassViewModel';
 import { connectSocket, disconnectSocket } from '../services/socket';
 import { useTheme } from '../ThemeContext';
 import logoImg from '../assets/Dlogo.png';
@@ -901,11 +902,12 @@ const Dashboard = ({ onLogout }) => {
 
   // Moved userRole declaration up to initialize activeView correctly
   const userRole = localStorage.getItem('userRole') || 'Member';
+  const userEmail = localStorage.getItem('userEmail') || '';
+  console.log('Dashboard rendered with userEmail:', userEmail);
   const initialView = userRole.toLowerCase() === 'student' ? 'MyGatePass' : 'Dashboard';
 
   const [activeView, setActiveView] = useState(initialView);
   const [activeTab, setActiveTab] = useState('GatePass'); // 'GatePass' or 'Visitors' for Dashboard
-  const [dataList, setDataList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [securityPermission, setSecurityPermission] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1001,7 +1003,7 @@ const Dashboard = ({ onLogout }) => {
     return `https://res.cloudinary.com/dtdo4gzfh/image/upload/${img}.jpg${version}`;
   };
 
-  const fetchDataRef = useRef();
+
   const profileMenuRef = useRef(null);
 
   useEffect(() => {
@@ -1042,10 +1044,6 @@ const Dashboard = ({ onLogout }) => {
       
       // Show native desktop notification
       showBrowserNotification(event, data);
-
-      if (fetchDataRef.current) {
-        fetchDataRef.current(true, event);
-      }
     };
 
     const handleProfileImageUpdate = (data) => {
@@ -1124,54 +1122,49 @@ const Dashboard = ({ onLogout }) => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [isProfileModalOpen, showLogoutConfirm, selectedGatePass, selectedVisitor, isEnterVisitorModalOpen, showCropper]);
 
+  // ── Offline-first: load from local DB first, sync in background ──────────
+  const activeGatePasses              = useActiveGatePasses();
+  const activeInterInstitutional      = useActiveInterInstitutionalGatePasses();
+  const activeVisitors                = useActiveVisitors();
+
+  // Trigger background sync on mount — same as Android's setupPassSyncAndObserve
   useEffect(() => {
-    if (activeView === 'Dashboard') {
-      // Reception should always default to Visitors tab
-      if (userRole.toLowerCase() === 'reception' && activeTab === 'GatePass') {
-        setActiveTab('Visitors');
-      }
-      fetchData();
-    }
-  }, [activeTab, activeView]);
+    const token = localStorage.getItem('token');
+    triggerGatePassSync(token);
+    triggerInterInstitutionalGatePassSync(token);
+    triggerVisitorSync(token);
+  }, []);
 
-  const fetchData = async (isBackground = false, event = null) => {
-    // Optimization: ignore events that don't belong to the active tab
-    if (isBackground && event) {
-      if (activeTab === 'GatePass' && event.startsWith('visitor')) return;
-      if (activeTab === 'Visitors' && event.startsWith('gatePass')) return;
+  // Build dataList reactively from active hooks (no manual JS date filter needed)
+  const dataList = React.useMemo(() => {
+    if (activeTab === 'GatePass') {
+      return [...activeGatePasses, ...activeInterInstitutional]
+        .sort((a, b) => new Date(b.applyDate) - new Date(a.applyDate));
     }
+    return [...activeVisitors]
+      .sort((a, b) => new Date(b.entryDate || b.meetDate) - new Date(a.entryDate || a.meetDate));
+  }, [activeTab, activeGatePasses, activeInterInstitutional, activeVisitors]);
 
-    if (!isBackground) {
-      setLoading(true);
+  // Redirect reception away from Gate Pass tab
+  useEffect(() => {
+    if (activeView === 'Dashboard' && userRole.toLowerCase() === 'reception' && activeTab === 'GatePass') {
+      setActiveTab('Visitors');
     }
-    try {
-      const token = localStorage.getItem('token');
-      let data = [];
-      if (activeTab === 'GatePass') {
-        data = await getRecentGatePassList(token);
-      } else if (activeTab === 'Visitors') {
-        data = await getRecentVisitorList(token);
-      }
-      
-      if (activeTab !== 'Reports') {
-        setDataList(data || []);
-      }
-    } catch (error) {
-      console.error(`Error fetching ${activeTab}:`, error);
-    } finally {
-      if (!isBackground) {
-        setLoading(false);
-      }
-    }
-  };
+  }, [activeView, userRole, activeTab]);
 
-  fetchDataRef.current = fetchData;
+  // Loading: show spinner until we've had at least one live-query result
+  useEffect(() => {
+    setLoading(false);
+  }, [dataList]);
+
+  // Remove unused fetchData and socket listeners that were here
+  // because PassViewModel sync takes care of background loading
 
   const handleApprove = async (passId, tgRemark) => {
     try {
       const token = localStorage.getItem('token');
       await approveGatePass({ token, gatePassId: passId, tgRemark });
-      fetchData();
+      // UI will automatically update via Socket -> Dexie hook
     } catch (error) {
       console.error('Error approving:', error);
     }
@@ -1181,7 +1174,6 @@ const Dashboard = ({ onLogout }) => {
     try {
       const token = localStorage.getItem('token');
       await rejectGatePass({ token, gatePassId: passId });
-      fetchData();
     } catch (error) {
       console.error('Error rejecting:', error);
     }
@@ -1211,7 +1203,7 @@ const Dashboard = ({ onLogout }) => {
             setActiveTab={setActiveTab}
             dataList={dataList}
             loading={loading}
-            onRefresh={fetchData}
+            onRefresh={() => {}}
             getImageUrl={getImageUrl}
             securityPermission={securityPermission}
             userRole={userRole}
@@ -1280,8 +1272,7 @@ const Dashboard = ({ onLogout }) => {
             </button>
           )}
 
-          {userRole.toLowerCase() !== 'security guard' && (
-            <button
+          <button
               onClick={() => handleViewChange('MyGatePass')}
               className="btn btn-outline"
               title="My Gate Pass"
@@ -1294,7 +1285,6 @@ const Dashboard = ({ onLogout }) => {
               </svg>
               <span>My Gate Pass</span>
             </button>
-          )}
 
           {/* SG Allotment & Batches — admin / principal / hod only */}
           {['admin', 'principal', 'hod'].includes(userRole.toLowerCase()) && (

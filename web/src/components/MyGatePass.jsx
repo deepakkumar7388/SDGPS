@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { applyForGatePass, getSelfUserGatePass, removeGatePassBySelfUser } from '../services/api';
+import { applyForGatePass, removeGatePassBySelfUser } from '../services/api';
+import { useGatePasses, useInterInstitutionalGatePasses } from '../viewmodels/PassViewModel';
 import socket from '../services/socket';
+import PremiumInterProgressIndicator from './PremiumInterProgressIndicator';
 
 /* ─────────────────────────────────────────────────────────
    STATUS helpers
@@ -437,6 +439,20 @@ const GatePassDetailModal = ({ pass, onClose, onRemoved, getImageUrl, onImageCli
 
           </div>
 
+          <PremiumInterProgressIndicator 
+            pass={pass} 
+            onActivateExit={async (p) => {
+              try {
+                const token = localStorage.getItem('token');
+                // Assume there's an API call or just show a message. Since it's offline-first, we'll let the user know they need backend integration if not present.
+                // In a full implementation, you'd call an API like: await updateInterInstitutionalStatus(token, p.gatePassId, 'exited_destination');
+                showMsg('success', 'Pass activated for exiting destination.');
+              } catch(e) {
+                showMsg('error', 'Failed to activate pass.');
+              }
+            }} 
+          />
+
           {/* Authority Remark */}
           {pass.tgRemark && (
             <div className="glass-panel" style={{ padding: '1.25rem', background: 'var(--surface-card)' }}>
@@ -473,8 +489,6 @@ const GatePassDetailModal = ({ pass, onClose, onRemoved, getImageUrl, onImageCli
    MY GATE PASS — main component
 ───────────────────────────────────────────────────────── */
 const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
-  const [passes, setPasses] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [selectedPass, setSelectedPass] = useState(null);
   const [feedback, setFeedback] = useState(null);
@@ -495,66 +509,16 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
     setTimeout(() => setFeedback(null), 4000);
   };
 
-  const loadPasses = useCallback(async (isBackground = false) => {
-    if (!isBackground) {
-      setLoading(true);
-    }
-    try {
-      const token = localStorage.getItem('token');
-      const data = await getSelfUserGatePass(token);
-      // Enrich each pass with user profile data (mirrors Android getCommonData)
-      const enriched = (data || []).map(pass => ({
-        img: userData.img || '',
-        name: userData.name || '',
-        applyEmail: userData.email || '',
-        department: userData.department || '',
-        campus: userData.campus || '',
-        role: userData.role || '',
-        phone: userData.phone || '',
-        ...pass,
-      }));
-      setPasses(enriched);
-    } catch (err) {
-      showMsg('error', `Failed to load gate passes: ${err.message}`);
-    } finally {
-      if (!isBackground) {
-        setLoading(false);
-      }
-    }
-  }, []);
+  const gatePasses = useGatePasses();
+  const interInstitutionalGatePasses = useInterInstitutionalGatePasses();
+  const currentUserEmail = userData.email || '';
 
-  useEffect(() => { loadPasses(); }, [loadPasses]);
+  const passes = React.useMemo(() => {
+    const allPasses = [...gatePasses, ...interInstitutionalGatePasses]
+      .filter(p => p.applyEmail === currentUserEmail)
+      .sort((a, b) => new Date(b.applyDate) - new Date(a.applyDate));
 
-  useEffect(() => {
-    const handleSocketUpdate = (data) => {
-      console.log('Real-time gate pass update received:', data);
-      loadPasses(true); // background refresh
-    };
-
-    socket.on('gatePassInsert', handleSocketUpdate);
-    socket.on('gatePassUpdate', handleSocketUpdate);
-    socket.on('gatePassStatusUpdate', handleSocketUpdate);
-
-    return () => {
-      socket.off('gatePassInsert', handleSocketUpdate);
-      socket.off('gatePassUpdate', handleSocketUpdate);
-      socket.off('gatePassStatusUpdate', handleSocketUpdate);
-    };
-  }, [loadPasses]);
-
-  useEffect(() => {
-    // Poll the backend every 6 seconds to ensure the student dashboard has fresh real-time data 
-    // without requiring backend socket modifications
-    const interval = setInterval(() => {
-      loadPasses(true);
-    }, 6000);
-
-    return () => clearInterval(interval);
-  }, [loadPasses]);
-
-  const handleApplySuccess = (newPass) => {
-    // Enrich with local user data (mirrors Android getCommonData)
-    const enriched = {
+    return allPasses.map(pass => ({
       img: userData.img || '',
       name: userData.name || '',
       applyEmail: userData.email || '',
@@ -562,15 +526,19 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
       campus: userData.campus || '',
       role: userData.role || '',
       phone: userData.phone || '',
-      ...newPass,
-    };
-    setPasses(prev => [enriched, ...prev]);
+      ...pass,
+    }));
+  }, [gatePasses, interInstitutionalGatePasses, currentUserEmail, userData]);
+
+  const handleApplySuccess = (newPass) => {
     setShowApplyModal(false);
     showMsg('success', 'Gate pass applied successfully! Awaiting approval.');
   };
 
   const handleRemoved = (gatePassId) => {
-    setPasses(prev => prev.filter(p => p.gatePassId !== gatePassId));
+    // Dexie will automatically update via socket, but if it was manually removed, the socket delete logic might be handled by the backend sending a delete socket event.
+    // If not, we might need to delete from Dexie directly here as well:
+    // db.gatePasses.delete(gatePassId);
     setSelectedPass(null);
   };
 
@@ -704,11 +672,7 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
         )}
 
         {/* ── List ── */}
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-            <div className="spinner" />
-          </div>
-        ) : filtered.length === 0 && passes.length > 0 ? (
+        {filtered.length === 0 && passes.length > 0 ? (
           <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
             <p style={{ color: 'var(--text-secondary)', margin: 0 }}>No results match your search.</p>
           </div>

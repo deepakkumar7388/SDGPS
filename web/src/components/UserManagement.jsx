@@ -22,6 +22,8 @@ const UserManagement = ({ getImageUrl, onImageClick }) => {
   const [loading, setLoading] = useState(true);
   const [formMode, setFormMode] = useState(null); // null, 'ADD', 'EDIT'
   const fileInputRef = useRef(null);
+  // Track when we're restoring edit-form state so we DON'T reset the role
+  const skipRoleResetRef = useRef(false);
 
   // Selection
   const [selectedEmails, setSelectedEmails] = useState([]);
@@ -45,6 +47,8 @@ const UserManagement = ({ getImageUrl, onImageClick }) => {
   const [selectedBatch, setSelectedBatch] = useState('');
 
   const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
+  const userEmail = (localStorage.getItem('userEmail') || '').toLowerCase();
+  const userDept = (localStorage.getItem('userDepartment') || '').toUpperCase();
 
   // Helper function to return fallback roles based on department and requester role
   const getFallbackRoles = (dept) => {
@@ -102,8 +106,12 @@ const UserManagement = ({ getImageUrl, onImageClick }) => {
   }, [dexieUsers]);
 
   useEffect(() => {
-    console.log('selectedDept changed to:', selectedDept);
-    setSelectedRole(''); // Reset selectedRole when department changes
+    // When dept changes, reset role UNLESS we are restoring edit-form values
+    if (skipRoleResetRef.current) {
+      skipRoleResetRef.current = false; // consume the flag
+    } else {
+      setSelectedRole('');
+    }
     if (selectedDept) fetchRoles();
     else setRoles([]);
   }, [selectedDept]);
@@ -321,6 +329,8 @@ const UserManagement = ({ getImageUrl, onImageClick }) => {
       previousEmail: user.email || ''
     });
     setSelectedCampus(user.campus || '');
+    // Set the skip flag so the dept-change effect won't clear role
+    skipRoleResetRef.current = true;
     setSelectedDept(user.department || '');
     setSelectedRole(user.role || '');
     setSelectedBatch(user.batch || '');
@@ -404,12 +414,28 @@ const UserManagement = ({ getImageUrl, onImageClick }) => {
 
   const getFilteredUsers = () => {
     return users.filter(user => {
+      // 1. Exclude the currently logged in user
+      if ((user.email || '').toLowerCase() === userEmail) {
+        return false;
+      }
+
+      // 2. Apply Role-based constraints
+      const uRole = user.role?.toLowerCase() || '';
+      const uDept = user.department?.toUpperCase() || '';
+      
+      if (userRole === 'faculty') {
+        if (uDept !== userDept || uRole !== 'student') return false;
+      } else if (userRole === 'hod') {
+        if (uDept !== userDept || !['faculty', 'student', 'reception', 'security guard'].includes(uRole)) return false;
+      }
+      
+      // 3. Search query
       if (searchQuery && !user.name?.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
       }
-      if (roleFilter === 'All') return true;
 
-      const uRole = user.role?.toLowerCase() || '';
+      // 4. Tab filtering
+      if (roleFilter === 'All') return true;
       if (roleFilter === 'Student') return uRole === 'student';
       if (roleFilter === 'Management') return ['principal', 'hod', 'faculty', 'admin'].includes(uRole);
       if (roleFilter === 'Security') return uRole === 'security guard' || uRole === 'security';

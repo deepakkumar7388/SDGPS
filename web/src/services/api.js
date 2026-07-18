@@ -547,3 +547,63 @@ export const logoutUser = async (data) => {
   }
   return response.text();
 };
+
+export const syncGatePasses = async (payload) => {
+    const response = await fetch(`${BASE_URL}/sync-gate-passes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to sync gate passes');
+    return response.json();
+};
+
+export const syncInterInstitutionalGatePasses = async (payload) => {
+    const response = await fetch(`${BASE_URL}/sync-inter-institutional-gate-passes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to sync inter-institutional gate passes');
+    return response.json();
+};
+
+export const syncVisitorPasses = async (payload) => {
+    const response = await fetch(`${BASE_URL}/sync-visitor-passes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to sync visitors');
+    return response.json();
+};
+
+export const getRecentUpdatedGatePass = async (payload) => {
+    const response = await fetch(`${BASE_URL}/get-recent-updated-gate-pass`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to fetch gate pass');
+    return response.json();
+};
+
+export const getRecentUpdatedInterInstitutionalGatePass = async (payload) => {
+    const response = await fetch(`${BASE_URL}/get-recent-updated-inter-institutional-gate-pass`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to fetch inter institutional gate pass');
+    return response.json();
+};
+
+export const getRecentUpdatedVisitor = async (payload) => {
+    const response = await fetch(`${BASE_URL}/get-recent-updated-visitor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to fetch visitor');
+    return response.json();
+};

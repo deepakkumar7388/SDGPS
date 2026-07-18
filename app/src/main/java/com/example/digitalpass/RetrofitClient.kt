@@ -5,7 +5,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
     // const val BASE_URL = "https://digitalpassbackend.onrender.com"
-    const val BASE_URL = "http://10.139.226.1:5000"
+    const val BASE_URL = "http://10.84.201.1:5000"
 
     val instance: ApiService by lazy {
         val retrofit = Retrofit.Builder()
