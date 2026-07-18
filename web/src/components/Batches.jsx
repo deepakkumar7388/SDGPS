@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { getAllBatches, getCampusAndDepartment, removeBatch, editBatch, getLeveledMember, getAllMemberForLevel, getDataForBatch, addNewBatch, editUser, getRoleBasedOnDepartment, getBatchesBasedOnDepartment } from '../services/api';
+import { removeBatch, editBatch, getLeveledMember, getAllMemberForLevel, getDataForBatch, addNewBatch, editUser, getRoleBasedOnDepartment, getBatchesBasedOnDepartment } from '../services/api';
 import { useBatches, triggerBatchSync } from '../viewmodels/BatchViewModel';
 import { useUsers } from '../viewmodels/UserViewModel';
 import { db } from '../database/db';
+import { fetchCampuses as getCampusesFromCache, fetchCampusesAndDepartments } from '../viewmodels/CampusDepartmentViewModel';
 
 const Batches = () => {
   const [batches, setBatches] = useState([]);
@@ -109,10 +110,11 @@ const Batches = () => {
   const fetchCampuses = async () => {
     try {
       const token = localStorage.getItem('token');
-      const data = await getCampusAndDepartment(token);
-      setCampuses(data.campus || []);
-      if (data.campus && data.campus.length > 0) {
-        setSelectedCampus(data.campus[0]);
+      // Cache-first: served from IndexedDB if already cached (mirrors Android getCampuses)
+      const campusList = await getCampusesFromCache(token);
+      setCampuses(campusList);
+      if (campusList.length > 0) {
+        setSelectedCampus(campusList[0]);
       }
     } catch (error) {
       console.error('Error fetching campuses:', error);
@@ -242,15 +244,15 @@ const Batches = () => {
     // Fetch options for dropdowns
     try {
       const token = localStorage.getItem('token');
-      const campusDeptData = await getCampusAndDepartment(token);
-      const fetchedCampuses = campusDeptData.campus || ["SISTec-Gandhi Nagar", "SISTec-Ratibad"];
-      const fetchedDepts = campusDeptData.department || [
+      const { campuses: fetchedCampuses, departments: fetchedDepts } =
+        await fetchCampusesAndDepartments(token, 'userManagement');
+      
+      setEditCampuses(fetchedCampuses.length > 0 ? fetchedCampuses : ["SISTec-Gandhi Nagar", "SISTec-Ratibad"]);
+      setEditDepartments(fetchedDepts.length > 0 ? fetchedDepts : [
           "COMPUTER SCIENCE", "INFORMATION TECHNOLOGY", "MECHANICAL ENGINEERING",
           "CIVIL ENGINEERING", "ELECTRICAL ENGINEERING", "ELECTRONICS & COMMUNICATION",
           "MBA", "ADMINISTRATION"
-      ];
-      setEditCampuses(fetchedCampuses);
-      setEditDepartments(fetchedDepts);
+      ]);
 
       if (user.department) {
         const rolesData = await getRoleBasedOnDepartment({ department: user.department, token });

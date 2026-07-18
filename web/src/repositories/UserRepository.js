@@ -6,27 +6,39 @@ export const UserRepository = {
     try {
       const syncRecord = await db.syncMetadata.get('users');
       const lastSyncTime = syncRecord ? syncRecord.lastSyncTime : 0;
+      
+      let offset = 0;
+      const limit = 500;
+      let hasMore = true;
+      let latestServerTime = 0;
 
-      const response = await getMembersForUserManagement(token, lastSyncTime, 0, 1000); // 1000 limit for safety
-      if (response && response.updatedUsers !== undefined) {
-        const { updatedUsers: users, deletedEmails, serverTime } = response;
-
-        await db.transaction('rw', db.users, db.syncMetadata, async () => {
-          // Add or update users
-          if (users && users.length > 0) {
-            await db.users.bulkPut(users);
-          }
+      while (hasMore) {
+        const response = await getMembersForUserManagement(token, lastSyncTime, offset, limit);
+        if (response && response.updatedUsers !== undefined) {
+          const { updatedUsers: users, deletedEmails, serverTime, hasMore: moreFlag } = response;
           
-          // Remove deleted users
-          if (deletedEmails && deletedEmails.length > 0) {
-            await db.users.bulkDelete(deletedEmails);
+          if (serverTime && serverTime > latestServerTime) {
+            latestServerTime = serverTime;
           }
 
-          // Update lastSyncTime
-          if (serverTime) {
-            await db.syncMetadata.put({ collection: 'users', lastSyncTime: serverTime });
-          }
-        });
+          await db.transaction('rw', db.users, async () => {
+            if (users && users.length > 0) {
+              await db.users.bulkPut(users);
+            }
+            if (deletedEmails && deletedEmails.length > 0) {
+              await db.users.bulkDelete(deletedEmails);
+            }
+          });
+          
+          hasMore = !!moreFlag;
+          offset += limit;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      if (latestServerTime > lastSyncTime) {
+        await db.syncMetadata.put({ collection: 'users', lastSyncTime: latestServerTime });
       }
     } catch (error) {
       console.error("Error syncing users to IndexedDB:", error);

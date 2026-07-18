@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   getMembersForUserManagement, removeUser,
-  getCampusAndDepartment, getRoleBasedOnDepartment, getBatchesBasedOnDepartment,
+  getRoleBasedOnDepartment, getBatchesBasedOnDepartment,
   addNewUser, editUser, uploadExcelUsers
 } from '../services/api';
 import { useUsers, triggerUserSync } from '../viewmodels/UserViewModel';
 import { db } from '../database/db';
+import { fetchCampusesAndDepartments } from '../viewmodels/CampusDepartmentViewModel';
 
 const UserManagement = ({ getImageUrl, onImageClick }) => {
   const defaultGetImageUrl = (img) => {
@@ -156,81 +157,60 @@ const UserManagement = ({ getImageUrl, onImageClick }) => {
   };
 
   const fetchCampusAndDept = async () => {
-    console.log('fetchCampusAndDept called. userRole:', userRole);
     try {
       const token = localStorage.getItem('token');
-      const data = await getCampusAndDepartment(token);
-      console.log('getCampusAndDepartment API response:', data);
-      
-      const campusList = data.campus || [];
-      const deptList = data.department || [];
       const userDept = localStorage.getItem('userDepartment') || '';
 
+      // Cache-first: served from IndexedDB if already cached (mirrors Android getCampuses/getDepartments)
+      const { campuses: campusList, departments: deptList } =
+        await fetchCampusesAndDepartments(token, 'userManagement');
+
       if (userRole === 'admin') {
-        setCampuses(campusList.length > 0 ? campusList : ["SISTec-Gandhi Nagar", "SISTec-Ratibad"]);
+        setCampuses(campusList.length > 0 ? campusList : ['SISTec-Gandhi Nagar', 'SISTec-Ratibad']);
         setDepartments(deptList.length > 0 ? deptList : [
-          "COMPUTER SCIENCE",
-          "INFORMATION TECHNOLOGY",
-          "MECHANICAL ENGINEERING",
-          "CIVIL ENGINEERING",
-          "ELECTRICAL ENGINEERING",
-          "ELECTRONICS & COMMUNICATION",
-          "MBA",
-          "ADMINISTRATION"
+          'COMPUTER SCIENCE', 'INFORMATION TECHNOLOGY', 'MECHANICAL ENGINEERING',
+          'CIVIL ENGINEERING', 'ELECTRICAL ENGINEERING', 'ELECTRONICS & COMMUNICATION',
+          'MBA', 'ADMINISTRATION'
         ]);
       } else if (userRole === 'principal') {
         setCampuses([]);
         setDepartments(deptList.length > 0 ? deptList : [
-          "COMPUTER SCIENCE",
-          "INFORMATION TECHNOLOGY",
-          "MECHANICAL ENGINEERING",
-          "CIVIL ENGINEERING",
-          "ELECTRICAL ENGINEERING",
-          "ELECTRONICS & COMMUNICATION",
-          "MBA",
-          "ADMINISTRATION"
+          'COMPUTER SCIENCE', 'INFORMATION TECHNOLOGY', 'MECHANICAL ENGINEERING',
+          'CIVIL ENGINEERING', 'ELECTRICAL ENGINEERING', 'ELECTRONICS & COMMUNICATION',
+          'MBA', 'ADMINISTRATION'
         ]);
       } else {
-        // HOD or Faculty
+        // HOD or Faculty — only their own department
         setCampuses([]);
         if (deptList.length > 0) {
           setDepartments(deptList);
         } else if (userDept) {
           setDepartments([userDept]);
         } else {
-          setDepartments(["COMPUTER SCIENCE"]);
+          setDepartments(['COMPUTER SCIENCE']);
         }
       }
     } catch (error) {
       console.error('Error fetching campus/dept:', error);
+      // Fallback: use localStorage data if fetch fails
       const userDept = localStorage.getItem('userDepartment') || '';
       if (userRole === 'admin') {
-        setCampuses(["SISTec-Gandhi Nagar", "SISTec-Ratibad"]);
+        setCampuses(['SISTec-Gandhi Nagar', 'SISTec-Ratibad']);
         setDepartments([
-          "COMPUTER SCIENCE",
-          "INFORMATION TECHNOLOGY",
-          "MECHANICAL ENGINEERING",
-          "CIVIL ENGINEERING",
-          "ELECTRICAL ENGINEERING",
-          "ELECTRONICS & COMMUNICATION",
-          "MBA",
-          "ADMINISTRATION"
+          'COMPUTER SCIENCE', 'INFORMATION TECHNOLOGY', 'MECHANICAL ENGINEERING',
+          'CIVIL ENGINEERING', 'ELECTRICAL ENGINEERING', 'ELECTRONICS & COMMUNICATION',
+          'MBA', 'ADMINISTRATION'
         ]);
       } else if (userRole === 'principal') {
         setCampuses([]);
         setDepartments([
-          "COMPUTER SCIENCE",
-          "INFORMATION TECHNOLOGY",
-          "MECHANICAL ENGINEERING",
-          "CIVIL ENGINEERING",
-          "ELECTRICAL ENGINEERING",
-          "ELECTRONICS & COMMUNICATION",
-          "MBA",
-          "ADMINISTRATION"
+          'COMPUTER SCIENCE', 'INFORMATION TECHNOLOGY', 'MECHANICAL ENGINEERING',
+          'CIVIL ENGINEERING', 'ELECTRICAL ENGINEERING', 'ELECTRONICS & COMMUNICATION',
+          'MBA', 'ADMINISTRATION'
         ]);
       } else {
         setCampuses([]);
-        setDepartments(userDept ? [userDept] : ["COMPUTER SCIENCE"]);
+        setDepartments(userDept ? [userDept] : ['COMPUTER SCIENCE']);
       }
     }
   };
