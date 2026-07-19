@@ -1,6 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { activateInterInstitutionalGatePass } from '../services/api';
 
 const PremiumInterProgressIndicator = ({ pass, onActivateExit }) => {
+  const [activating, setActivating] = useState(false);
+  const [activateError, setActivateError] = useState(null);
+  const [activateSuccess, setActivateSuccess] = useState(false);
+
   if (!pass.destinationCampus) return null;
 
   // Derive current step from status
@@ -16,13 +21,13 @@ const PremiumInterProgressIndicator = ({ pass, onActivateExit }) => {
 
   let currentStepIndex = -1;
   if (status === 'approved') currentStepIndex = 0;
-  if (status === 'exited_source') currentStepIndex = 1;
-  if (status === 'entered_destination') currentStepIndex = 2;
-  if (status === 'exited_destination') currentStepIndex = 3;
-  if (status === 'entered_source' || status === 'exit') currentStepIndex = 4;
+  if (status === 'exited from source campus') currentStepIndex = 1;
+  if (status === 'entered into destination campus') currentStepIndex = 2;
+  if (status === 'exited from destination campus') currentStepIndex = 3;
+  if (status === 're-entered into source campus' || status === 'exit') currentStepIndex = 4;
   
   // If status is entered_source directly from exited_source without entered_destination, they bypassed
-  const isBypassed = (status === 'entered_source' || status === 'exit') && pass.bypassedDestination;
+  const isBypassed = (status === 're-entered into source campus' || status === 'exit') && pass.bypassedDestination;
 
   return (
     <div className="glass-panel" style={{ padding: '1.25rem', background: 'var(--surface-card)', marginTop: '1rem' }}>
@@ -73,12 +78,39 @@ const PremiumInterProgressIndicator = ({ pass, onActivateExit }) => {
         })}
       </div>
 
-      {status === 'entered_destination' && (
+      {status === 'entered into destination campus' && (pass.passActivity || '').toLowerCase() === 'inactive' && (
         <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-          <p style={{ fontSize: '0.85rem', color: 'var(--warning)', marginBottom: '0.5rem' }}>Pass is inactive while at destination.</p>
-          <button onClick={() => onActivateExit(pass)} className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>
-            Activate (Exit Destination)
-          </button>
+          {activateError && (
+            <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginBottom: '0.5rem' }}>{activateError}</p>
+          )}
+          {activateSuccess ? (
+            <p style={{ fontSize: '0.85rem', color: 'var(--success)' }}>✓ Pass activated! You can now exit.</p>
+          ) : (
+            <>
+              <p style={{ fontSize: '0.85rem', color: 'var(--warning)', marginBottom: '0.5rem' }}>Pass is inactive while at destination.</p>
+              <button
+                onClick={async () => {
+                  setActivating(true);
+                  setActivateError(null);
+                  try {
+                    const token = localStorage.getItem('token');
+                    await activateInterInstitutionalGatePass({ token, gatePassId: pass.gatePassId });
+                    setActivateSuccess(true);
+                    if (onActivateExit) onActivateExit(pass);
+                  } catch (err) {
+                    setActivateError(err?.message || 'Failed to activate. Please try again.');
+                  } finally {
+                    setActivating(false);
+                  }
+                }}
+                disabled={activating}
+                className="btn btn-primary"
+                style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', opacity: activating ? 0.6 : 1 }}
+              >
+                {activating ? 'Activating…' : 'Activate (Exit Destination)'}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

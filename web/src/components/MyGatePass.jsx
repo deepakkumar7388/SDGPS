@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { applyForGatePass, removeGatePassBySelfUser } from '../services/api';
-import { useGatePasses, useInterInstitutionalGatePasses } from '../viewmodels/PassViewModel';
+import { applyForGatePass, removeGatePassBySelfUser, editGatePassBySelfUser } from '../services/api';
+import { useGatePasses, useInterInstitutionalGatePasses, triggerAllPassSync } from '../viewmodels/PassViewModel';
+import { fetchCampusesForAllotment } from '../viewmodels/CampusDepartmentViewModel';
 import socket from '../services/socket';
+import { db } from '../database/db';
 import PremiumInterProgressIndicator from './PremiumInterProgressIndicator';
 
 /* ─────────────────────────────────────────────────────────
@@ -24,8 +26,9 @@ const statusLabel = (status) => {
 /* ─────────────────────────────────────────────────────────
    APPLY GATE PASS MODAL
 ───────────────────────────────────────────────────────── */
-const ApplyModal = ({ onClose, onSuccess }) => {
+const ApplyModal = ({ onClose, onSuccess, isInterInstitutional, allCampuses }) => {
   const [reason, setReason] = useState('');
+  const [destinationCampus, setDestinationCampus] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [textareaFocused, setTextareaFocused] = useState(false);
@@ -37,12 +40,15 @@ const ApplyModal = ({ onClose, onSuccess }) => {
 
   const QUICK_REASONS = ["Going Home", "Medical Checkup", "Family Event", "Urgent Work"];
 
-  useEffect(() => {
+  const fetchLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationError("Geolocation is not supported by your browser.");
       setDetectingLocation(false);
       return;
     }
+
+    setDetectingLocation(true);
+    setLocationError(null);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -55,12 +61,16 @@ const ApplyModal = ({ onClose, onSuccess }) => {
       },
       (err) => {
         console.error("Geolocation error:", err);
-        setLocationError("Location permission denied. GPS access is required to verify you are physically inside the campus.");
+        setLocationError("Location permission denied or timed out. GPS access is required to verify you are physically inside the campus.");
         setDetectingLocation(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   }, []);
+
+  useEffect(() => {
+    fetchLocation();
+  }, [fetchLocation]);
 
   const handleSubmit = async () => {
     const trimmed = reason.trim();
@@ -77,16 +87,24 @@ const ApplyModal = ({ onClose, onSuccess }) => {
       return;
     }
 
+    if (isInterInstitutional && !destinationCampus) {
+      setError('Destination campus is required for inter-institutional gate pass.');
+      return;
+    }
+
     setSubmitting(true);
     setError('');
     try {
       const token = localStorage.getItem('token');
-      const result = await applyForGatePass({ 
+      const payload = { 
         reason: trimmed, 
         token,
         latitude: location.latitude,
         longitude: location.longitude
-      });
+      };
+      if (isInterInstitutional) payload.destinationCampus = destinationCampus;
+
+      const result = await applyForGatePass(payload);
       onSuccess(result);
     } catch (err) {
       setError(err.message || 'Failed to apply. Please try again.');
@@ -168,6 +186,25 @@ const ApplyModal = ({ onClose, onSuccess }) => {
               </div>
             </div>
           </div>
+
+          {isInterInstitutional && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label className="input-label" style={{ color: 'var(--accent-primary)', marginBottom: 0 }}>
+                Destination Campus <span style={{ color: 'var(--danger)' }}>*</span>
+              </label>
+              <select
+                className="input-control"
+                value={destinationCampus}
+                onChange={(e) => { setDestinationCampus(e.target.value); setError(''); }}
+                style={{ background: 'var(--surface-input)', border: '1px solid var(--glass-border)' }}
+              >
+                <option value="">Select Destination Campus</option>
+                {allCampuses.filter(c => c !== localStorage.getItem('userCampus')).map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Reason Input */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -257,10 +294,20 @@ const ApplyModal = ({ onClose, onSuccess }) => {
                 <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem' }}>Detecting GPS Coordinates...</span>
               </>
             ) : locationError ? (
-              <>
+              <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '0.75rem' }}>
                 <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>⚠️</span>
-                <span style={{ fontSize: '0.82rem', lineHeight: 1.4 }}>{locationError}</span>
-              </>
+                <span style={{ fontSize: '0.82rem', lineHeight: 1.4, flex: 1 }}>{locationError}</span>
+                <button 
+                  onClick={fetchLocation} 
+                  style={{
+                    background: 'var(--danger)', color: 'white', border: 'none',
+                    padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem',
+                    cursor: 'pointer', fontWeight: 600, flexShrink: 0
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
             ) : (
               <>
                 <div style={{
@@ -323,9 +370,12 @@ const ApplyModal = ({ onClose, onSuccess }) => {
 /* ─────────────────────────────────────────────────────────
    GATE PASS DETAIL MODAL (self-user view)
 ───────────────────────────────────────────────────────── */
-const GatePassDetailModal = ({ pass, onClose, onRemoved, getImageUrl, onImageClick }) => {
+const GatePassDetailModal = ({ pass, onClose, onRemoved, getImageUrl, onImageClick, onEdited }) => {
   const [removing, setRemoving] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editReason, setEditReason] = useState(pass.reason || '');
+  const [saving, setSaving] = useState(false);
 
   const sc = statusColor(pass.status);
   const isPending = (pass.status || '').toLowerCase() === 'pending';
@@ -335,12 +385,51 @@ const GatePassDetailModal = ({ pass, onClose, onRemoved, getImageUrl, onImageCli
     setRemoving(true);
     try {
       const token = localStorage.getItem('token');
-      await removeGatePassBySelfUser({ token, gatePassId: pass.gatePassId });
+      await removeGatePassBySelfUser({ 
+        token, 
+        gatePassId: pass.gatePassId,
+        ...(pass.destinationCampus ? { destinationCampus: pass.destinationCampus } : {})
+      });
       setFeedback({ type: 'success', msg: 'Gate pass removed successfully.' });
       setTimeout(() => { onClose(); onRemoved(pass.gatePassId); }, 1200);
     } catch (err) {
       setFeedback({ type: 'error', msg: err.message || 'Failed to remove. Please try again.' });
       setRemoving(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editReason.trim()) {
+      setFeedback({ type: 'error', msg: 'Reason cannot be empty.' });
+      return;
+    }
+    if (editReason === pass.reason) {
+      setEditMode(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      await editGatePassBySelfUser({
+        token,
+        gatePassId: pass.gatePassId,
+        reason: editReason,
+        ...(pass.destinationCampus ? { destinationCampus: pass.destinationCampus } : {})
+      });
+      // Instantly update local database
+      const updatedPass = { ...pass, reason: editReason };
+      if (pass.destinationCampus) {
+        await db.interInstitutionalGatePasses.put(updatedPass);
+      } else {
+        await db.gatePasses.put(updatedPass);
+      }
+      if (onEdited) onEdited(updatedPass);
+      setFeedback({ type: 'success', msg: 'Gate pass reason updated successfully.' });
+      setEditMode(false);
+    } catch (err) {
+      setFeedback({ type: 'error', msg: err.message || 'Failed to edit. Please try again.' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -371,9 +460,22 @@ const GatePassDetailModal = ({ pass, onClose, onRemoved, getImageUrl, onImageCli
           position: 'sticky', top: 0, background: 'var(--surface-modal)', zIndex: 2,
         }}>
           <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Gate Pass Details</h3>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.5rem', lineHeight: 1 }}>
-            &times;
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {isPending && (
+              editMode ? (
+                <button onClick={handleSaveEdit} disabled={saving} className="btn btn-primary" style={{ padding: '0.4rem 1rem', fontSize: '0.875rem' }}>
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+              ) : (
+                <button onClick={() => setEditMode(true)} className="btn btn-outline" style={{ padding: '0.4rem 1rem', fontSize: '0.875rem' }}>
+                  ✏ Edit
+                </button>
+              )
+            )}
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.5rem', lineHeight: 1 }}>
+              &times;
+            </button>
+          </div>
         </div>
 
         {feedback && (
@@ -417,7 +519,17 @@ const GatePassDetailModal = ({ pass, onClose, onRemoved, getImageUrl, onImageCli
               {/* Reason Card */}
               <div className="glass-panel" style={{ padding: '1.25rem', background: 'var(--surface-card)' }}>
                 <label style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Reason for Leave</label>
-                <p style={{ margin: 0, color: 'var(--text-primary)', lineHeight: 1.6, fontSize: '0.9rem' }}>{pass.reason || '—'}</p>
+                {editMode ? (
+                  <textarea
+                    className="input-control"
+                    rows={2}
+                    value={editReason}
+                    onChange={(e) => setEditReason(e.target.value)}
+                    style={{ resize: 'vertical', marginBottom: 0 }}
+                  />
+                ) : (
+                  <p style={{ margin: 0, color: 'var(--text-primary)', lineHeight: 1.6, fontSize: '0.9rem' }}>{pass.reason || '—'}</p>
+                )}
               </div>
             </div>
 
@@ -444,11 +556,12 @@ const GatePassDetailModal = ({ pass, onClose, onRemoved, getImageUrl, onImageCli
             onActivateExit={async (p) => {
               try {
                 const token = localStorage.getItem('token');
-                // Assume there's an API call or just show a message. Since it's offline-first, we'll let the user know they need backend integration if not present.
-                // In a full implementation, you'd call an API like: await updateInterInstitutionalStatus(token, p.gatePassId, 'exited_destination');
-                showMsg('success', 'Pass activated for exiting destination.');
+                if (token) {
+                  triggerAllPassSync(token);
+                }
+                console.log('Success', 'Pass activated for exiting destination.');
               } catch(e) {
-                showMsg('error', 'Failed to activate pass.');
+                console.log('Error', 'Failed to sync after activating pass.');
               }
             }} 
           />
@@ -488,21 +601,26 @@ const GatePassDetailModal = ({ pass, onClose, onRemoved, getImageUrl, onImageCli
 /* ─────────────────────────────────────────────────────────
    MY GATE PASS — main component
 ───────────────────────────────────────────────────────── */
-const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
+export default function MyGatePass({ onImageClick }) {
+  const [showApplyTypeDialog, setShowApplyTypeDialog] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const [isInterInstitutionalApply, setIsInterInstitutionalApply] = useState(false);
   const [selectedPass, setSelectedPass] = useState(null);
+  const [allCampuses, setAllCampuses] = useState([]);
+  const [isInterInstitutionalView, setIsInterInstitutionalView] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [localAddedPasses, setLocalAddedPasses] = useState([]);
 
   const userData = (() => {
     try { return JSON.parse(localStorage.getItem('userData') || '{}'); } catch { return {}; }
   })();
 
-  const localGetImageUrl = (img) => {
+  const getImageUrl = (img) => {
     if (!img) return null;
     return `https://res.cloudinary.com/dtdo4gzfh/image/upload/${img}.jpg`;
   };
-  const getImageUrl = propGetImageUrl || localGetImageUrl;
 
   const showMsg = (type, msg) => {
     setFeedback({ type, msg });
@@ -511,35 +629,91 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
 
   const gatePasses = useGatePasses();
   const interInstitutionalGatePasses = useInterInstitutionalGatePasses();
-  const currentUserEmail = userData.email || '';
+  const currentUserEmail = (userData.email || '').toLowerCase();
+
+  const allPasses = React.useMemo(() => {
+    const allPassesMap = new Map();
+    
+    [...gatePasses, ...interInstitutionalGatePasses].forEach(p => {
+      allPassesMap.set(p.gatePassId, p);
+    });
+
+    localAddedPasses.forEach(p => {
+      if (!allPassesMap.has(p.gatePassId)) {
+        allPassesMap.set(p.gatePassId, p);
+      }
+    });
+
+    const parseDateStr = (dStr) => {
+      if (!dStr) return 0;
+      let t = new Date(dStr).getTime();
+      if (!isNaN(t)) return t;
+      // Fallback for "YYYY-MM-DD hh:mm AM/PM"
+      const match = dStr.match(/(\d{4})-(\d{2})-(\d{2}) (\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+      if (match) {
+        let [_, y, m, d, h, min, ampm] = match;
+        h = parseInt(h, 10);
+        if (ampm && ampm.toUpperCase() === 'PM' && h < 12) h += 12;
+        if (ampm && ampm.toUpperCase() === 'AM' && h === 12) h = 0;
+        return new Date(y, m - 1, d, h, min).getTime();
+      }
+      return 0;
+    };
+
+    return Array.from(allPassesMap.values())
+      .filter(p => (p.applyEmail || '').toLowerCase() === currentUserEmail)
+      .sort((a, b) => parseDateStr(b.applyDate) - parseDateStr(a.applyDate))
+      .map(pass => ({
+        img: userData.img || '',
+        name: userData.name || '',
+        applyEmail: userData.email || '',
+        department: userData.department || '',
+        campus: userData.campus || '',
+        role: userData.role || '',
+        phone: userData.phone || '',
+        ...pass,
+      }));
+  }, [gatePasses, interInstitutionalGatePasses, currentUserEmail, userData, localAddedPasses]);
 
   const passes = React.useMemo(() => {
-    const allPasses = [...gatePasses, ...interInstitutionalGatePasses]
-      .filter(p => p.applyEmail === currentUserEmail)
-      .sort((a, b) => new Date(b.applyDate) - new Date(a.applyDate));
+    return allPasses.filter(p => isInterInstitutionalView ? !!p.destinationCampus : !p.destinationCampus);
+  }, [allPasses, isInterInstitutionalView]);
 
-    return allPasses.map(pass => ({
-      img: userData.img || '',
-      name: userData.name || '',
-      applyEmail: userData.email || '',
-      department: userData.department || '',
-      campus: userData.campus || '',
-      role: userData.role || '',
-      phone: userData.phone || '',
-      ...pass,
-    }));
-  }, [gatePasses, interInstitutionalGatePasses, currentUserEmail, userData]);
+  useEffect(() => {
+    fetchCampuses();
+    triggerAllPassSync(localStorage.getItem('token'));
+  }, []);
+
+  const fetchCampuses = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const data = await fetchCampusesForAllotment(token);
+      setAllCampuses(data || []);
+    } catch (e) {
+      console.error("Failed to fetch campuses", e);
+    }
+  };
 
   const handleApplySuccess = (newPass) => {
     setShowApplyModal(false);
     showMsg('success', 'Gate pass applied successfully! Awaiting approval.');
+    if (newPass) {
+      newPass.applyEmail = currentUserEmail;
+      newPass.campus = userData.campus;
+      newPass.department = userData.department;
+      setLocalAddedPasses(prev => [newPass, ...prev]);
+    }
   };
 
   const handleRemoved = (gatePassId) => {
-    // Dexie will automatically update via socket, but if it was manually removed, the socket delete logic might be handled by the backend sending a delete socket event.
-    // If not, we might need to delete from Dexie directly here as well:
-    // db.gatePasses.delete(gatePassId);
+    db.gatePasses.delete(gatePassId);
+    db.interInstitutionalGatePasses.delete(gatePassId);
+    setLocalAddedPasses(prev => prev.filter(p => p.gatePassId !== gatePassId));
     setSelectedPass(null);
+  };
+
+  const handleEdited = (updatedPass) => {
+    setLocalAddedPasses(prev => prev.map(p => p.gatePassId === updatedPass.gatePassId ? updatedPass : p));
   };
 
   const filtered = passes.filter(p =>
@@ -548,42 +722,63 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
     (p.status || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Stats
-  const stats = {
-    total: passes.length,
-    pending: passes.filter(p => {
-      const s = (p.status || '').toLowerCase();
-      return s === 'pending' || s === 'approving';
-    }).length,
-    approved: passes.filter(p => {
-      const s = (p.status || '').toLowerCase();
-      return s === 'approved' || s === 'exit';
-    }).length,
-    rejected: passes.filter(p => (p.status || '').toLowerCase() === 'rejected').length,
-  };
-
   return (
     <>
       <div className="page-content animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            onClick={loadPasses}
-            className="btn btn-outline"
-            style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
-            title="Refresh"
-          >
-            ↻ Refresh
-          </button>
-          <button
-            onClick={() => setShowApplyModal(true)}
-            className="btn btn-primary"
-            style={{ padding: '0.5rem 1.25rem', fontSize: '0.9rem' }}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <h1 style={{ fontSize: '1.4rem', margin: 0 }}>My Gate Passes</h1>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => setShowApplyTypeDialog(true)}
+            style={{ padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
             + Apply for Gate Pass
           </button>
         </div>
-      </div>
+
+        {/* View Toggle */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+          <div style={{
+            display: 'flex',
+            background: 'var(--surface-hover)',
+            padding: '0.25rem',
+            borderRadius: '999px',
+            border: '1px solid var(--glass-border)',
+          }}>
+            <button
+              onClick={() => setIsInterInstitutionalView(false)}
+              style={{
+                padding: '0.5rem 1.25rem',
+                borderRadius: '999px',
+                border: 'none',
+                background: !isInterInstitutionalView ? 'var(--accent-primary)' : 'transparent',
+                color: !isInterInstitutionalView ? 'white' : 'var(--text-secondary)',
+                fontWeight: !isInterInstitutionalView ? 600 : 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontSize: '0.9rem'
+              }}
+            >
+              Regular Passes
+            </button>
+            <button
+              onClick={() => setIsInterInstitutionalView(true)}
+              style={{
+                padding: '0.5rem 1.25rem',
+                borderRadius: '999px',
+                border: 'none',
+                background: isInterInstitutionalView ? 'var(--accent-primary)' : 'transparent',
+                color: isInterInstitutionalView ? 'white' : 'var(--text-secondary)',
+                fontWeight: isInterInstitutionalView ? 600 : 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontSize: '0.9rem'
+              }}
+            >
+              Inter-Institutional
+            </button>
+          </div>
+        </div>
 
         {/* ── Feedback ── */}
         {feedback && (
@@ -598,67 +793,8 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
           </div>
         )}
 
-        {/* ── Stats row ── */}
-        {!loading && passes.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-            {[
-              { label: 'Total Passes', value: stats.total, color: 'var(--accent-primary)', icon: '📋' },
-              { label: 'Pending', value: stats.pending, color: 'var(--warning)', icon: '⏳' },
-              { label: 'Approved', value: stats.approved, color: 'var(--success)', icon: '✅' },
-              { label: 'Rejected', value: stats.rejected, color: 'var(--danger)', icon: '❌' },
-            ].map(({ label, value, color, icon }) => (
-              <div 
-                key={label} 
-                className="glass-panel" 
-                style={{
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.35rem',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  background: 'var(--surface-card)',
-                  transition: 'transform var(--transition-fast), box-shadow var(--transition-fast)',
-                  cursor: 'default'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = 'var(--glass-shadow), 0 4px 12px rgba(0, 0, 0, 0.04)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'none';
-                  e.currentTarget.style.boxShadow = 'var(--glass-shadow)';
-                }}
-              >
-                {/* Accent line on left */}
-                <div style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '4px',
-                  backgroundColor: color,
-                  borderRadius: '4px 0 0 4px',
-                }} />
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>
-                    {label}
-                  </span>
-                  <span style={{ fontSize: '1rem', opacity: 0.85 }}>
-                    {icon}
-                  </span>
-                </div>
-                <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1.1 }}>
-                  {value}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* ── Search ── */}
-        {!loading && passes.length > 0 && (
+        {passes.length > 0 && (
           <div style={{ marginBottom: '1rem' }}>
             <input
               type="text"
@@ -677,15 +813,14 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
             <p style={{ color: 'var(--text-secondary)', margin: 0 }}>No results match your search.</p>
           </div>
         ) : passes.length === 0 ? (
-          /* Empty state */
           <div className="glass-panel" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🪪</div>
-            <h3 style={{ margin: '0 0 0.5rem', color: 'var(--text-primary)' }}>No Gate Passes Yet</h3>
+            <h3 style={{ margin: '0 0 0.5rem', color: 'var(--text-primary)' }}>No {isInterInstitutionalView ? 'Inter-Institutional ' : ''}Gate Passes Yet</h3>
             <p style={{ margin: '0 0 1.5rem', color: 'var(--text-secondary)' }}>
-              You haven't applied for any gate passes. Click below to submit your first request.
+              Click below to submit a new request.
             </p>
             <button
-              onClick={() => setShowApplyModal(true)}
+              onClick={() => setShowApplyTypeDialog(true)}
               className="btn btn-primary"
               style={{ padding: '0.75rem 2rem' }}
             >
@@ -709,9 +844,7 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
                   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = ''}
                 >
-                  {/* Left: icon + info */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 0 }}>
-                    {/* Icon */}
                     <div style={{
                       width: '44px', height: '44px', borderRadius: '50%',
                       background: sc + '22', border: `1px solid ${sc}55`,
@@ -722,7 +855,6 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
                        (pass.status || '').toLowerCase() === 'rejected' ? '✗' :
                        (pass.status || '').toLowerCase() === 'approving' ? '⏳' : '🕐'}
                     </div>
-                    {/* Text */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
                         fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)',
@@ -737,7 +869,6 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
                     </div>
                   </div>
 
-                  {/* Right: status badge + arrow */}
                   <div className="responsive-card-actions" style={{ flexShrink: 0, marginLeft: '1rem' }}>
                     <span style={{
                       fontSize: '0.75rem', fontWeight: 600,
@@ -756,11 +887,53 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
         )}
       </div>
 
+      {/* ── Apply Type Dialog ── */}
+      {showApplyTypeDialog && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setShowApplyTypeDialog(false); }}
+          style={{
+            position: 'fixed', inset: 0, background: 'var(--overlay-bg)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem'
+          }}
+        >
+          <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '360px', padding: '1.5rem', textAlign: 'center' }}>
+            <h3 style={{ margin: '0 0 1.5rem 0' }}>Select Gate Pass Type</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button
+                className="btn btn-outline"
+                onClick={() => {
+                  setIsInterInstitutionalApply(false);
+                  setShowApplyTypeDialog(false);
+                  setShowApplyModal(true);
+                }}
+                style={{ padding: '1rem', fontSize: '1rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                Regular <span>→</span>
+              </button>
+              <button
+                className="btn btn-outline"
+                onClick={() => {
+                  setIsInterInstitutionalApply(true);
+                  setShowApplyTypeDialog(false);
+                  setShowApplyModal(true);
+                }}
+                style={{ padding: '1rem', fontSize: '1rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                Inter-Institutional <span>→</span>
+              </button>
+            </div>
+            <button onClick={() => setShowApplyTypeDialog(false)} className="btn btn-text" style={{ marginTop: '1rem', width: '100%' }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       {/* ── Apply Modal ── */}
       {showApplyModal && (
         <ApplyModal
           onClose={() => setShowApplyModal(false)}
           onSuccess={handleApplySuccess}
+          isInterInstitutional={isInterInstitutionalApply}
+          allCampuses={allCampuses}
         />
       )}
 
@@ -770,6 +943,7 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
           pass={selectedPass}
           onClose={() => setSelectedPass(null)}
           onRemoved={handleRemoved}
+          onEdited={handleEdited}
           getImageUrl={getImageUrl}
           onImageClick={onImageClick}
         />
@@ -778,4 +952,4 @@ const MyGatePass = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
   );
 };
 
-export default MyGatePass;
+

@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       '/api': {
         // target: 'https://digitalpassbackend-dmwz.onrender.com',
-        target: 'http://10.84.201.1:5000',
+        target: 'http://10.222.29.1:5000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, '')

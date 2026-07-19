@@ -17,6 +17,7 @@ import com.google.android.material.button.MaterialButton
 import okhttp3.ResponseBody
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
@@ -59,6 +60,17 @@ class EditCampusActivity : BaseActivity() {
         // Initialize osmdroid configuration
         val ctx: Context = applicationContext
         Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx))
+        Configuration.getInstance().userAgentValue = "DigitalPassApp/1.0"
+
+        // Store tiles in internal cache — no external storage permission needed
+        val basePath = java.io.File(ctx.cacheDir.absolutePath, "osmdroid")
+        basePath.mkdirs()
+        Configuration.getInstance().osmdroidBasePath = basePath
+        val tileCache = java.io.File(basePath.absolutePath, "tile")
+        // Clear old cached tiles (including any cached 403 errors) on every start
+        tileCache.deleteRecursively()
+        tileCache.mkdirs()
+        Configuration.getInstance().osmdroidTileCache = tileCache
         
         setContentView(R.layout.activity_edit_campus)
 
@@ -83,6 +95,18 @@ class EditCampusActivity : BaseActivity() {
     }
 
     private fun setupMap() {
+        // Use CartoDB Positron — free, no API key, no com.example.* block unlike OSM MAPNIK
+        val cartoLight = XYTileSource(
+            "CartoDB",
+            0, 19, 256, ".png",
+            arrayOf(
+                "https://a.basemaps.cartocdn.com/light_all/",
+                "https://b.basemaps.cartocdn.com/light_all/",
+                "https://c.basemaps.cartocdn.com/light_all/"
+            ),
+            "© OpenStreetMap contributors © CARTO"
+        )
+        mapView.setTileSource(cartoLight)
         mapView.setMultiTouchControls(true)
         val mapController = mapView.controller
         mapController.setZoom(16.0)

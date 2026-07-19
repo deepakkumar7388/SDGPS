@@ -7,8 +7,28 @@ import { VisitorRepository } from '../repositories/VisitorRepository';
 const EMPTY_ARRAY = [];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+const parseDateStr = (dStr) => {
+  if (!dStr) return 0;
+  let t = new Date(dStr).getTime();
+  if (!isNaN(t)) return t;
+  // Fallback for "YYYY-MM-DD hh:mm AM/PM"
+  const match = dStr.match(/(\d{4})-(\d{2})-(\d{2}) (\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (match) {
+    let [_, y, m, d, h, min, ampm] = match;
+    h = parseInt(h, 10);
+    if (ampm && ampm.toUpperCase() === 'PM' && h < 12) h += 12;
+    if (ampm && ampm.toUpperCase() === 'AM' && h === 12) h = 0;
+    return new Date(y, m - 1, d, h, min).getTime();
+  }
+  return 0;
+};
+
 const todayBounds = () => {
-  const today = new Date().toISOString().split('T')[0]; // 'YYYY-MM-DD'
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const today = `${year}-${month}-${day}`;
   return {
     start: `${today} 00:00:00`,
     end:   `${today} 23:59:59`,
@@ -48,7 +68,7 @@ export const useActiveGatePasses = () => {
         .and(p => p.status === 'approved')
         .reverse()
         .sortBy('applyDate')
-        .then(arr => arr.sort((a, b) => new Date(b.applyDate) - new Date(a.applyDate)));
+        .then(arr => arr.sort((a, b) => parseDateStr(b.applyDate) - parseDateStr(a.applyDate)));
     }
     // Others: pending/approving/approved today, exclude own applications (unless hod/principal)
     const activeStatuses = ['pending', 'approving', 'approved'];
@@ -61,11 +81,11 @@ export const useActiveGatePasses = () => {
         return (p.applyEmail || '').toLowerCase() !== userEmail;
       })
       .toArray()
-      .then(arr => arr.sort((a, b) => new Date(b.applyDate) - new Date(a.applyDate)));
+      .then(arr => arr.sort((a, b) => parseDateStr(b.applyDate) - parseDateStr(a.applyDate)));
   }, [userRole, userEmail, start, end]) || EMPTY_ARRAY;
 };
 
-/** Inter-institutional active (same logic as regular gate pass, today) */
+/** Inter-institutional active (mirrors Android InterInstitutionalGatePassDao.kt) */
 export const useActiveInterInstitutionalGatePasses = () => {
   const { start, end } = todayBounds();
   const userRole  = (localStorage.getItem('userRole') || '').toLowerCase();
@@ -73,22 +93,27 @@ export const useActiveInterInstitutionalGatePasses = () => {
 
   return useLiveQuery(async () => {
     if (userRole === 'security guard') {
+      // Security: NOT IN ('pending','approving','rejected') AND passActivity = 'active', today
       return db.interInstitutionalGatePasses
         .where('applyDate').between(start, end, true, true)
-        .and(p => p.status === 'approved')
+        .and(p => {
+          const s = (p.status || '').toLowerCase();
+          if (['pending', 'approving', 'rejected'].includes(s)) return false;
+          return (p.passActivity || '').toLowerCase() === 'active';
+        })
         .toArray()
-        .then(arr => arr.sort((a, b) => new Date(b.applyDate) - new Date(a.applyDate)));
+        .then(arr => arr.sort((a, b) => parseDateStr(b.applyDate) - parseDateStr(a.applyDate)));
     }
-    const activeStatuses = ['pending', 'approving', 'approved'];
+    // Others: NOT IN ('Re-entered into source campus'), today
     return db.interInstitutionalGatePasses
       .where('applyDate').between(start, end, true, true)
       .and(p => {
-        if (!activeStatuses.includes((p.status || '').toLowerCase())) return false;
+        if ((p.status || '') === 'Re-entered into source campus') return false;
         if (userRole === 'hod' || userRole === 'principal') return true;
         return (p.applyEmail || '').toLowerCase() !== userEmail;
       })
       .toArray()
-      .then(arr => arr.sort((a, b) => new Date(b.applyDate) - new Date(a.applyDate)));
+      .then(arr => arr.sort((a, b) => parseDateStr(b.applyDate) - parseDateStr(a.applyDate)));
   }, [userRole, userEmail, start, end]) || EMPTY_ARRAY;
 };
 
@@ -107,7 +132,7 @@ export const useHistoricalGatePasses = () => {
         !activeStatuses.includes((p.status || '').toLowerCase())
       )
       .toArray()
-      .then(arr => arr.sort((a, b) => new Date(b.applyDate) - new Date(a.applyDate)));
+      .then(arr => arr.sort((a, b) => parseDateStr(b.applyDate) - parseDateStr(a.applyDate)));
   }, [start]) || EMPTY_ARRAY;
 };
 
@@ -121,7 +146,7 @@ export const useHistoricalInterInstitutionalGatePasses = () => {
         !activeStatuses.includes((p.status || '').toLowerCase())
       )
       .toArray()
-      .then(arr => arr.sort((a, b) => new Date(b.applyDate) - new Date(a.applyDate)));
+      .then(arr => arr.sort((a, b) => parseDateStr(b.applyDate) - parseDateStr(a.applyDate)));
   }, [start]) || EMPTY_ARRAY;
 };
 
@@ -143,7 +168,7 @@ export const useActiveVisitors = () => {
       })
       .toArray()
       .then(arr => arr.sort((a, b) =>
-        new Date(b.entryDate || b.meetDate) - new Date(a.entryDate || a.meetDate)
+        parseDateStr(b.entryDate || b.meetDate) - parseDateStr(a.entryDate || a.meetDate)
       ));
   }, [start, end]) || EMPTY_ARRAY;
 };
@@ -164,7 +189,7 @@ export const useHistoricalVisitors = () => {
       })
       .toArray()
       .then(arr => arr.sort((a, b) =>
-        new Date(b.entryDate || b.meetDate) - new Date(a.entryDate || a.meetDate)
+        parseDateStr(b.entryDate || b.meetDate) - parseDateStr(a.entryDate || a.meetDate)
       ));
   }, [start]) || EMPTY_ARRAY;
 };
