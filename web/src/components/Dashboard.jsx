@@ -3,6 +3,7 @@ import { approveGatePass, rejectGatePass, editGatePass, removeGatePassBySelfUser
 import { useActiveGatePasses, useActiveInterInstitutionalGatePasses, useActiveVisitors, triggerGatePassSync, triggerInterInstitutionalGatePassSync, triggerVisitorSync } from '../viewmodels/PassViewModel';
 import { connectSocket, disconnectSocket } from '../services/socket';
 import { useTheme } from '../ThemeContext';
+import { db } from '../database/db';
 import logoImg from '../assets/Dlogo.png';
 import UserManagement from './UserManagement';
 import Batches from './Batches';
@@ -13,7 +14,8 @@ import EnterVisitorModal from './EnterVisitorModal';
 import CampusLocation from './CampusLocation';
 import AppUpdate from './AppUpdate';
 import ReportManagement from './ReportManagement';
-
+import PremiumProgressIndicator from './PremiumProgressIndicator';
+import PremiumInterProgressIndicator from './PremiumInterProgressIndicator';
 // Helper: checks if applyDate is today (so actions are enabled)
 const isToday = (dateStr) => {
   if (!dateStr) return false;
@@ -353,6 +355,18 @@ const GatePassDetailModal = ({ item, onClose, onRefresh, getImageUrl, onImageCli
     setTimeout(() => setFeedback(null), 3000);
   };
 
+  const optimisticUpdate = async (newStatus) => {
+    try {
+      const dbTable = item.destinationCampus ? db.interInstitutionalGatePasses : db.gatePasses;
+      const existing = await dbTable.get(Number(item.gatePassId));
+      if (existing) {
+        existing.status = newStatus;
+        if (approvalRemark && approvalRemark.trim()) existing.tgRemark = approvalRemark.trim();
+        await dbTable.put(existing);
+      }
+    } catch (e) { console.error('Optimistic update failed', e); }
+  };
+
   /* ── Approve ── */
   const handleApprove = async () => {
     if (item.role === 'student' && !approvalRemark.trim()) {
@@ -370,6 +384,7 @@ const GatePassDetailModal = ({ item, onClose, onRefresh, getImageUrl, onImageCli
       } else {
         await approveGatePass(payload);
       }
+      await optimisticUpdate('approved');
       showMsg('success', 'Gate pass approved successfully!');
       setTimeout(() => { onClose(); onRefresh(); }, 1200);
     } catch (err) {
@@ -388,6 +403,7 @@ const GatePassDetailModal = ({ item, onClose, onRefresh, getImageUrl, onImageCli
       } else {
         await rejectGatePass({ token, gatePassId: item.gatePassId });
       }
+      await optimisticUpdate('rejected');
       showMsg('success', 'Gate pass rejected.');
       setTimeout(() => { onClose(); onRefresh(); }, 1200);
     } catch {
@@ -406,6 +422,18 @@ const GatePassDetailModal = ({ item, onClose, onRefresh, getImageUrl, onImageCli
       } else {
         await approveGatePass({ token, gatePassId: item.gatePassId });
       }
+      
+      let newStatus = 'exit';
+      if (item.destinationCampus) {
+        const userCampus = localStorage.getItem('userCampus') || '';
+        if (item.campus === userCampus) {
+          newStatus = item.status !== 'approved' ? 'Entered into source campus' : 'Exited from source campus';
+        } else {
+          newStatus = item.status === 'Exited from source campus' ? 'Entered into destination campus' : 'Exited from destination campus';
+        }
+      }
+      await optimisticUpdate(newStatus);
+      
       showMsg('success', 'Gate pass marked as exited/entered.');
       setTimeout(() => { onClose(); onRefresh(); }, 1200);
     } catch {
@@ -420,6 +448,8 @@ const GatePassDetailModal = ({ item, onClose, onRefresh, getImageUrl, onImageCli
     setActionLoading(true);
     try {
       await removeGatePassBySelfUser({ token, gatePassId: item.gatePassId });
+      const dbTable = item.destinationCampus ? db.interInstitutionalGatePasses : db.gatePasses;
+      await dbTable.delete(Number(item.gatePassId));
       showMsg('success', 'Gate pass removed successfully.');
       setTimeout(() => { onClose(); onRefresh(); }, 1200);
     } catch {
@@ -609,6 +639,13 @@ const GatePassDetailModal = ({ item, onClose, onRefresh, getImageUrl, onImageCli
 
           </div>
 
+          {/* ── Progress Indicator ── */}
+          {item.destinationCampus ? (
+            <PremiumInterProgressIndicator pass={item} />
+          ) : (
+            <PremiumProgressIndicator pass={item} />
+          )}
+
           {/* ── tgRemark (Authority Remark) — shown if exists or if required for student approval ── */}
           {(item.tgRemark || (canAct && !isSecurityGuard && item.role === 'student')) && (
             <div className="glass-panel" style={{ padding: '1.25rem', background: 'var(--surface-card)' }}>
@@ -693,10 +730,20 @@ const DashboardContent = ({
 }) => {
   const { theme, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
+  const [passTypeFilter, setPassTypeFilter] = useState('All');
 
-  const filteredData = dataList.filter(item =>
-    !searchQuery || (item.name || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredData = dataList.filter(item => {
+    const matchesSearch = !searchQuery || (item.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    
+    let matchesType = true;
+    if (activeTab === 'GatePass' && passTypeFilter !== 'All') {
+      const isInter = !!item.destinationCampus;
+      if (passTypeFilter === 'Regular' && isInter) matchesType = false;
+      if (passTypeFilter === 'Inter-Institutional' && !isInter) matchesType = false;
+    }
+
+    return matchesSearch && matchesType;
+  });
 
   return (
     <>
@@ -730,6 +777,18 @@ const DashboardContent = ({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h3 style={{ margin: 0 }}>Recent {activeTab === 'GatePass' ? 'Gate Passes' : 'Visitors'}</h3>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+            {activeTab === 'GatePass' && (
+              <select
+                className="input-control"
+                style={{ maxWidth: '180px', minWidth: '120px', marginBottom: 0, flex: '1 1 120px' }}
+                value={passTypeFilter}
+                onChange={(e) => setPassTypeFilter(e.target.value)}
+              >
+                <option value="All">All Types</option>
+                <option value="Regular">Regular</option>
+                <option value="Inter-Institutional">Inter-Institutional</option>
+              </select>
+            )}
             <input
               type="text"
               placeholder={`Search by name…`}
@@ -781,6 +840,14 @@ const DashboardContent = ({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <h4 style={{ margin: '0 0 0.2rem', fontSize: '0.95rem' }}>{item.name || 'Unknown'}</h4>
                       <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
+                        {activeTab === 'GatePass' && (
+                          <span style={{ 
+                            fontWeight: 600, 
+                            color: item.destinationCampus ? 'var(--accent-primary)' : 'var(--text-secondary)'
+                          }}>
+                            {item.destinationCampus ? 'Inter-Institutional' : 'Regular'} · 
+                          </span>
+                        )}
                         {item.department && <span>{item.department} · </span>}
                         {item.applyDate || item.entryDate || item.date || ''}
                       </p>
@@ -1107,6 +1174,9 @@ const Dashboard = ({ onLogout }) => {
     socket.on('gatePassInsert', handleUpdate('gatePassInsert'));
     socket.on('gatePassUpdate', handleUpdate('gatePassUpdate'));
     socket.on('gatePassStatusUpdate', handleUpdate('gatePassStatusUpdate'));
+    socket.on('interInstitutionalGatePassInsert', handleUpdate('interInstitutionalGatePassInsert'));
+    socket.on('interInstitutionalGatePassUpdate', handleUpdate('interInstitutionalGatePassUpdate'));
+    socket.on('interInstitutionalGatePassStatusUpdate', handleUpdate('interInstitutionalGatePassStatusUpdate'));
     socket.on('profileImageUpdate', handleProfileImageUpdate);
 
     // Check Security Guard Permission
@@ -1123,6 +1193,9 @@ const Dashboard = ({ onLogout }) => {
       socket.off('gatePassInsert', handleUpdate);
       socket.off('gatePassUpdate', handleUpdate);
       socket.off('gatePassStatusUpdate', handleUpdate);
+      socket.off('interInstitutionalGatePassInsert', handleUpdate);
+      socket.off('interInstitutionalGatePassUpdate', handleUpdate);
+      socket.off('interInstitutionalGatePassStatusUpdate', handleUpdate);
       socket.off('profileImageUpdate', handleProfileImageUpdate);
       // We don't necessarily want to disconnect the socket if the user is just navigating 
       // between views, but since Dashboard is the main wrapper, we'll keep it active.

@@ -46,5 +46,8 @@ class AppliedGatePassBySelfUser : BaseGatePassActivity() {
 
     override fun onResume() {
         super.onResume()
+        val email = LoginUserDataHolder.loginUserData?.get("email") ?: ""
+        passSyncViewModel.loadSelfInterInstitutional(email)
+        passSyncViewModel.loadSelfGatePasses(email)
     }
 }

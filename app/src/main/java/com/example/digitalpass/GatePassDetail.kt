@@ -79,6 +79,7 @@ class GatePassDetail : BaseActivity() {
         var name=findViewById<TextView>(R.id.name)
         reason=findViewById(R.id.reason)
         var status=findViewById<TextView>(R.id.status)
+        var gatePassTypeTextView=findViewById<TextView>(R.id.gatePassType)
         var gatePassId=findViewById<TextView>(R.id.gatePassId)
         var department=findViewById<TextView>(R.id.department)
         var phone=findViewById<TextView>(R.id.phone)
@@ -178,6 +179,7 @@ class GatePassDetail : BaseActivity() {
         //make status in uppercase
         status.text=statusVal?.uppercase()
         if(statusVal?.uppercase()=="APPROVING")status.text="In Process"
+        gatePassTypeTextView?.text = if (gatePass.containsKey("destinationCampus")) "Inter-Institutional" else "Regular"
         gatePassId.text=gatePass["gatePassId"]
         department.text=gatePass["department"]+"  "+gatePass["role"]
         phone.text=gatePass["phone"]
@@ -286,6 +288,7 @@ class GatePassDetail : BaseActivity() {
                         approve.isEnabled=true
                         if(response.isSuccessful){
                             Toast.makeText(this@GatePassDetail,"Gate Pass Removed Successfully",Toast.LENGTH_SHORT).show()
+                            optimisticDelete()
                             finish()
                         }
                         else Toast.makeText(this@GatePassDetail, LoginUserDataHolder.getErrorMessage(response),Toast.LENGTH_SHORT).show()
@@ -393,6 +396,7 @@ class GatePassDetail : BaseActivity() {
                 reject?.isEnabled=true
                 if(response.isSuccessful){
                     Toast.makeText(this@GatePassDetail,"Gate Pass Rejected Successfully",Toast.LENGTH_SHORT).show()
+                    optimisticUpdateStatus("rejected")
                     finish()
                 }
                 else Toast.makeText(this@GatePassDetail, LoginUserDataHolder.getErrorMessage(response),Toast.LENGTH_SHORT).show()
@@ -471,6 +475,23 @@ class GatePassDetail : BaseActivity() {
                     Toast.makeText(this@GatePassDetail,LoginUserDataHolder.getSuccessMessage(
                         response as Response<ResponseBody>
                     ),Toast.LENGTH_SHORT).show()
+
+                    val newStatus = if (LoginUserDataHolder.loginUserData?.get("role") == "security guard") {
+                        if (gatePass.containsKey("destinationCampus")) {
+                            val myCampus = LoginUserDataHolder.loginUserData?.get("campus")
+                            if (gatePass["campus"] == myCampus) {
+                                if (gatePass["status"] != "approved") "Entered into source campus" else "Exited from source campus"
+                            } else {
+                                if (gatePass["status"] == "Exited from source campus") "Entered into destination campus" else "Exited from destination campus"
+                            }
+                        } else {
+                            "exit"
+                        }
+                    } else {
+                        "approved"
+                    }
+                    optimisticUpdateStatus(newStatus)
+
                     finish()
                 }
                 else Toast.makeText(
@@ -638,16 +659,53 @@ class GatePassDetail : BaseActivity() {
                         gatePass["status"] = "Entered into destination campus"
                         // refresh UI
                         setupProgressIndicator()
+                        optimisticUpdateStatus("Entered into destination campus")
                     } else {
-                        Toast.makeText(this@GatePassDetail, "Failed to activate pass", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@GatePassDetail, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_SHORT).show()
                     }
                 }
 
                 override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
                     progressBar?.stopAnimation()
-                    Toast.makeText(this@GatePassDetail, "Network Error", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@GatePassDetail, "Failed to activate pass", Toast.LENGTH_SHORT).show()
                 }
             })
     }
 
+    private fun optimisticUpdateStatus(newStatus: String) {
+        val gatePassId = gatePass["gatePassId"]?.toIntOrNull() ?: return
+        val tgRemark = gatePass["tgRemark"]
+        CoroutineScope(Dispatchers.IO).launch {
+            val db = AppDatabase.getDatabase(this@GatePassDetail)
+            if (gatePass.containsKey("destinationCampus")) {
+                val dao = db.interInstitutionalGatePassDao()
+                val existing = dao.getGatePassById(gatePassId)
+                if (existing != null) {
+                    existing.passData["status"] = newStatus
+                    if (tgRemark != null) existing.passData["tgRemark"] = tgRemark
+                    dao.insertGatePass(existing)
+                }
+            } else {
+                val dao = db.gatePassDao()
+                val existing = dao.getGatePassById(gatePassId)
+                if (existing != null) {
+                    existing.passData["status"] = newStatus
+                    if (tgRemark != null) existing.passData["tgRemark"] = tgRemark
+                    dao.insertGatePass(existing)
+                }
+            }
+        }
+    }
+
+    private fun optimisticDelete() {
+        val gatePassId = gatePass["gatePassId"]?.toIntOrNull() ?: return
+        CoroutineScope(Dispatchers.IO).launch {
+            val db = AppDatabase.getDatabase(this@GatePassDetail)
+            if (gatePass.containsKey("destinationCampus")) {
+                db.interInstitutionalGatePassDao().deleteByGatePassId(gatePassId)
+            } else {
+                db.gatePassDao().deleteByGatePassId(gatePassId)
+            }
+        }
+    }
 }

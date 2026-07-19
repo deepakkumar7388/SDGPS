@@ -4,6 +4,8 @@ import {
   useGatePasses, useInterInstitutionalGatePasses, useVisitors,
   triggerGatePassSync, triggerInterInstitutionalGatePassSync, triggerVisitorSync
 } from '../viewmodels/PassViewModel';
+import PremiumProgressIndicator from './PremiumProgressIndicator';
+import PremiumInterProgressIndicator from './PremiumInterProgressIndicator';
 
 const History = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
   const [activeTab, setActiveTab] = useState('GatePass'); // 'GatePass' or 'Visitors'
@@ -11,6 +13,7 @@ const History = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
   // Filters State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
+  const [passTypeFilter, setPassTypeFilter] = useState('All Types');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
@@ -63,6 +66,7 @@ const History = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
     setToDate('');
     setSearchQuery('');
     setStatusFilter('All Status');
+    setPassTypeFilter('All Types');
   };
 
   const handleDownloadCSV = () => {
@@ -104,6 +108,13 @@ const History = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
     return sourceData.filter(item => {
       const matchesName   = !searchQuery || (item.name || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'All Status' || (item.status || '').toLowerCase() === statusFilter.toLowerCase();
+      
+      let matchesType = true;
+      if (activeTab === 'GatePass' && passTypeFilter !== 'All Types') {
+        const isInter = !!item.destinationCampus;
+        if (passTypeFilter === 'Regular' && isInter) matchesType = false;
+        if (passTypeFilter === 'Inter-Institutional' && !isInter) matchesType = false;
+      }
 
       let matchesDate = true;
       const dateField = activeTab === 'GatePass' ? item.applyDate : (item.entryDate || item.meetDate);
@@ -112,13 +123,13 @@ const History = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
         if (fromDate && itemDateStr < fromDate) matchesDate = false;
         if (toDate   && itemDateStr > toDate)   matchesDate = false;
       }
-      return matchesName && matchesStatus && matchesDate;
+      return matchesName && matchesStatus && matchesType && matchesDate;
     });
   }, [
     activeTab,
     historicalGatePasses, historicalInterInstitutional, historicalVisitors,
     allGatePasses, allInterInstitutional, allVisitors,
-    searchQuery, statusFilter, fromDate, toDate
+    searchQuery, statusFilter, passTypeFilter, fromDate, toDate
   ]);
 
   return (
@@ -154,6 +165,19 @@ const History = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           
+          {activeTab === 'GatePass' && (
+            <select 
+              className="input-control" 
+              style={{ minWidth: '150px', marginBottom: 0 }}
+              value={passTypeFilter}
+              onChange={(e) => setPassTypeFilter(e.target.value)}
+            >
+              <option value="All Types">All Types</option>
+              <option value="Regular">Regular</option>
+              <option value="Inter-Institutional">Inter-Institutional</option>
+            </select>
+          )}
+
           <select 
             className="input-control" 
             style={{ minWidth: '150px', marginBottom: 0 }}
@@ -210,6 +234,14 @@ const History = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
                 <div>
                   <h4 style={{ marginBottom: '0.25rem' }}>{item.name || 'Unknown User'}</h4>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                    {activeTab === 'GatePass' && (
+                      <span style={{ 
+                        fontWeight: 600, 
+                        color: item.destinationCampus ? 'var(--accent-primary)' : 'var(--text-secondary)'
+                      }}>
+                        {item.destinationCampus ? 'Inter-Institutional' : 'Regular'} | 
+                      </span>
+                    )}
                     Date: {item.applyDate || item.entryDate || item.date || 'N/A'} | Status: <span style={{ color: item.status === 'Approved' || item.status === 'approved' ? 'var(--success)' : item.status === 'Rejected' || item.status === 'rejected' ? 'var(--danger)' : 'var(--warning)' }}>{item.status || 'Past Record'}</span>
                   </p>
                   {item.reason && <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Reason: {item.reason}</p>}
@@ -315,6 +347,15 @@ const History = ({ getImageUrl: propGetImageUrl, onImageClick }) => {
               </div>
 
             </div>
+
+            {/* ── Progress Indicator ── */}
+            {activeTab === 'GatePass' && selectedItem && (
+              selectedItem.destinationCampus ? (
+                <PremiumInterProgressIndicator pass={selectedItem} />
+              ) : (
+                <PremiumProgressIndicator pass={selectedItem} />
+              )
+            )}
 
             {/* Authority Remark */}
             {selectedItem.tgRemark && (

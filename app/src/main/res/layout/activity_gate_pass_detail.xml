@@ -94,11 +94,9 @@
                         android:text="Name"
                         android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
                         android:textColor="#2D3436"
-                        app:layout_constraintBottom_toTopOf="@id/status"
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toEndOf="@id/imageCard"
-                        app:layout_constraintTop_toTopOf="@id/imageCard"
-                        app:layout_constraintVertical_chainStyle="packed" />
+                        app:layout_constraintTop_toTopOf="@id/imageCard" />
 
                     <TextView
                         android:id="@+id/status"
@@ -111,9 +109,22 @@
                         android:text="Status"
                         android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
                         android:textColor="#052E92"
-                        app:layout_constraintBottom_toBottomOf="@id/imageCard"
                         app:layout_constraintStart_toStartOf="@id/name"
                         app:layout_constraintTop_toBottomOf="@id/name" />
+
+                    <TextView
+                        android:id="@+id/gatePassType"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/spinner_background"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="4dp"
+                        android:text="Regular"
+                        android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+                        android:textColor="#000000"
+                        app:layout_constraintStart_toStartOf="@id/status"
+                        app:layout_constraintTop_toBottomOf="@id/status" />
 
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </com.google.android.material.card.MaterialCardView>

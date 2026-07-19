@@ -5,6 +5,7 @@ import { fetchCampusesForAllotment } from '../viewmodels/CampusDepartmentViewMod
 import socket from '../services/socket';
 import { db } from '../database/db';
 import PremiumInterProgressIndicator from './PremiumInterProgressIndicator';
+import PremiumProgressIndicator from './PremiumProgressIndicator';
 
 /* ─────────────────────────────────────────────────────────
    STATUS helpers
@@ -551,20 +552,24 @@ const GatePassDetailModal = ({ pass, onClose, onRemoved, getImageUrl, onImageCli
 
           </div>
 
-          <PremiumInterProgressIndicator 
-            pass={pass} 
-            onActivateExit={async (p) => {
-              try {
-                const token = localStorage.getItem('token');
-                if (token) {
-                  triggerAllPassSync(token);
+          {pass.destinationCampus ? (
+            <PremiumInterProgressIndicator 
+              pass={pass} 
+              onActivateExit={async (p) => {
+                try {
+                  const token = localStorage.getItem('token');
+                  if (token) {
+                    triggerAllPassSync(token);
+                  }
+                  console.log('Success', 'Pass activated for exiting destination.');
+                } catch(e) {
+                  console.log('Error', 'Failed to sync after activating pass.');
                 }
-                console.log('Success', 'Pass activated for exiting destination.');
-              } catch(e) {
-                console.log('Error', 'Failed to sync after activating pass.');
-              }
-            }} 
-          />
+              }} 
+            />
+          ) : (
+            <PremiumProgressIndicator pass={pass} />
+          )}
 
           {/* Authority Remark */}
           {pass.tgRemark && (

@@ -599,6 +599,12 @@ class ManagementMember : BaseActivity() {
 
     override fun onResume(){
         super.onResume()
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        val todayStart = "$today 00:00:00"
+        val todayEnd = "$today 23:59:59"
+        passSyncViewModel.loadActiveInterInstitutionalGatePasses(todayStart, todayEnd)
+        passSyncViewModel.loadActiveGatePasses(todayStart, todayEnd)
+        passSyncViewModel.loadActiveVisitors(todayStart, todayEnd)
     }
 
 

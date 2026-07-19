@@ -643,7 +643,7 @@ export const getRecentUpdatedGatePass = async (payload) => {
 };
 
 export const getRecentUpdatedInterInstitutionalGatePass = async (payload) => {
-    const response = await fetch(`${BASE_URL}/get-recent-updated-inter-institutional-gate-pass`, {
+    const response = await fetch(`${BASE_URL}/get-recent-updated-gate-pass`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

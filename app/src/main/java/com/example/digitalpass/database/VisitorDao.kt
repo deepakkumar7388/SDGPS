@@ -16,12 +16,12 @@ interface VisitorDao {
     @Query("DELETE FROM visitors")
     fun deleteAllVisitors()
 
-    @Query("SELECT * FROM visitors WHERE json_extract(visitorData, '$.entryDate') >= :todayStart AND json_extract(visitorData, '$.entryDate') <= :todayEnd AND json_extract(visitorData, '$.status') IN ('pending', 'meet') ORDER BY json_extract(visitorData, '$.entryDate') DESC")
+    @Query("SELECT * FROM visitors WHERE SUBSTR(json_extract(visitorData, '$.entryDate'), 1, 10) >= SUBSTR(:todayStart, 1, 10) AND SUBSTR(json_extract(visitorData, '$.entryDate'), 1, 10) <= SUBSTR(:todayEnd, 1, 10) AND json_extract(visitorData, '$.status') IN ('pending', 'meet') ORDER BY json_extract(visitorData, '$.entryDate') DESC")
     fun getActiveVisitors(todayStart: String, todayEnd: String): List<VisitorEntity>
 
-    @Query("SELECT * FROM visitors WHERE json_extract(visitorData, '$.entryDate') < :todayStart OR json_extract(visitorData, '$.status') NOT IN ('pending', 'meet') ORDER BY json_extract(visitorData, '$.entryDate') DESC")
+    @Query("SELECT * FROM visitors WHERE SUBSTR(json_extract(visitorData, '$.entryDate'), 1, 10) < SUBSTR(:todayStart, 1, 10) OR json_extract(visitorData, '$.status') NOT IN ('pending', 'meet') ORDER BY json_extract(visitorData, '$.entryDate') DESC")
     fun getHistoricalVisitors(todayStart: String): List<VisitorEntity>
 
-    @Query("SELECT * FROM visitors WHERE json_extract(visitorData, '$.entryDate') >= :startDate AND json_extract(visitorData, '$.entryDate') <= :endDate ORDER BY json_extract(visitorData, '$.entryDate') DESC")
+    @Query("SELECT * FROM visitors WHERE SUBSTR(json_extract(visitorData, '$.entryDate'), 1, 10) >= SUBSTR(:startDate, 1, 10) AND SUBSTR(json_extract(visitorData, '$.entryDate'), 1, 10) <= SUBSTR(:endDate, 1, 10) ORDER BY json_extract(visitorData, '$.entryDate') DESC")
     fun getVisitorsByDateRange(startDate: String, endDate: String): List<VisitorEntity>
 }

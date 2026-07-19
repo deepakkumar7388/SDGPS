@@ -13,22 +13,28 @@ interface InterInstitutionalGatePassDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertAll(passes: List<GatePassEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertGatePass(gatePass: GatePassEntity)
+
+    @Query("SELECT * FROM gate_passes WHERE gatePassId = :gatePassId LIMIT 1")
+    fun getGatePassById(gatePassId: Int): GatePassEntity?
+
     @Query("DELETE FROM gate_passes WHERE gatePassId = :gatePassId AND json_extract(passData, '$.destinationCampus') IS NOT NULL")
     fun deleteByGatePassId(gatePassId: Int)
 
     @Query("DELETE FROM gate_passes WHERE json_extract(passData, '$.destinationCampus') IS NOT NULL")
     fun deleteAllGatePasses()
 
-    @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.destinationCampus') IS NOT NULL AND json_extract(passData, '$.applyDate') >= :todayStart AND json_extract(passData, '$.applyDate') <= :todayEnd AND json_extract(passData, '$.status') NOT IN ('Re-entered into source campus') AND (json_extract(passData, '$.applyEmail') != :loginUserEmail OR :userRole IN ('principal', 'hod')) ORDER BY json_extract(passData, '$.applyDate') DESC")
+    @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.destinationCampus') IS NOT NULL AND SUBSTR(json_extract(passData, '$.applyDate'), 1, 10) >= SUBSTR(:todayStart, 1, 10) AND SUBSTR(json_extract(passData, '$.applyDate'), 1, 10) <= SUBSTR(:todayEnd, 1, 10) AND json_extract(passData, '$.status') NOT IN ('Re-entered into source campus') AND (json_extract(passData, '$.applyEmail') != :loginUserEmail OR :userRole IN ('principal', 'hod')) ORDER BY json_extract(passData, '$.applyDate') DESC")
     fun getActiveGatePassesByMember(todayStart: String, todayEnd: String, loginUserEmail: String, userRole: String): List<GatePassEntity>
 
-    @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.destinationCampus') IS NOT NULL AND json_extract(passData, '$.applyDate') >= :todayStart AND json_extract(passData, '$.applyDate') <= :todayEnd AND json_extract(passData, '$.status') NOT IN ('pending','approving','rejected') AND json_extract(passData,'$.passActivity') ='active' ORDER BY json_extract(passData, '$.applyDate') DESC")
+    @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.destinationCampus') IS NOT NULL AND SUBSTR(json_extract(passData, '$.applyDate'), 1, 10) >= SUBSTR(:todayStart, 1, 10) AND SUBSTR(json_extract(passData, '$.applyDate'), 1, 10) <= SUBSTR(:todayEnd, 1, 10) AND json_extract(passData, '$.status') NOT IN ('pending','approving','rejected') AND json_extract(passData,'$.passActivity') ='active' ORDER BY json_extract(passData, '$.applyDate') DESC")
     fun getActiveGatePassesBySecurity(todayStart: String, todayEnd: String): List<GatePassEntity>
 
-    @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.destinationCampus') IS NOT NULL AND (json_extract(passData, '$.applyDate') < :todayStart OR json_extract(passData, '$.status') NOT IN ('pending', 'approving', 'approved')) ORDER BY json_extract(passData, '$.applyDate') DESC")
+    @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.destinationCampus') IS NOT NULL AND (SUBSTR(json_extract(passData, '$.applyDate'), 1, 10) < SUBSTR(:todayStart, 1, 10) OR json_extract(passData, '$.status') NOT IN ('pending', 'approving', 'approved')) ORDER BY json_extract(passData, '$.applyDate') DESC")
     fun getHistoricalGatePasses(todayStart: String): List<GatePassEntity>
 
-    @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.destinationCampus') IS NOT NULL AND json_extract(passData, '$.applyDate') >= :startDate AND json_extract(passData, '$.applyDate') <= :endDate ORDER BY json_extract(passData, '$.applyDate') DESC")
+    @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.destinationCampus') IS NOT NULL AND SUBSTR(json_extract(passData, '$.applyDate'), 1, 10) >= SUBSTR(:startDate, 1, 10) AND SUBSTR(json_extract(passData, '$.applyDate'), 1, 10) <= SUBSTR(:endDate, 1, 10) ORDER BY json_extract(passData, '$.applyDate') DESC")
     fun getGatePassesByDateRange(startDate: String, endDate: String): List<GatePassEntity>
 
     @Query("SELECT * FROM gate_passes WHERE json_extract(passData, '$.destinationCampus') IS NOT NULL AND json_extract(passData, '$.applyEmail') = :email ORDER BY json_extract(passData, '$.applyDate') DESC")
