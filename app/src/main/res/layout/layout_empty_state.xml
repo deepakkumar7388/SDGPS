@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/emptyStateLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:visibility="gone">
+
+    <ImageView
+        android:id="@+id/emptyStateLogo"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_marginBottom="16dp"
+        android:alpha="0.8"
+        android:src="@drawable/mainapplogo" />
+
+    <TextView
+        android:id="@+id/emptyStateText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="No Data Found"
+        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+        android:textColor="#8F9BB3" />
+</LinearLayout>

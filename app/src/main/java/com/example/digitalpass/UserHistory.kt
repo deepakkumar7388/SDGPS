@@ -24,6 +24,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import com.example.digitalpass.utils.setupEmptyState
+import com.example.digitalpass.utils.evaluateEmptyState
 
 class UserHistory : BaseActivity() {
     private var search: SearchView? = null
@@ -105,6 +107,11 @@ class UserHistory : BaseActivity() {
         visitorAdapter.listTypeByDate = "history"
         gatePassAdapter.listTypeByDate = "history"
         recyclerView.adapter = visitorAdapter
+        
+        val emptyView = findViewById<View>(R.id.emptyStateLayout)
+        if (emptyView != null) {
+            recyclerView.setupEmptyState(emptyView, "No History Found", R.drawable.historyemptyview)
+        }
 
         // Setup observers for local cache
         val interInstitutionalSwitch = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.interInstitutionalSwitch)
@@ -181,6 +188,12 @@ class UserHistory : BaseActivity() {
                 recyclerView.animate().alpha(0f).setDuration(150).withEndAction {
                     // Swap the adapter
                     recyclerView.adapter = if (isVisitor) visitorAdapter else gatePassAdapter
+                    
+                    val emptyView = findViewById<View>(R.id.emptyStateLayout)
+                    if (emptyView != null) {
+                        recyclerView.setupEmptyState(emptyView, "No History Found", R.drawable.historyemptyview)
+                        recyclerView.evaluateEmptyState(emptyView) // Evaluate immediately for the active tab
+                    }
 
                     // Update button visual feedback
                     updateButtonStyles(isVisitor)

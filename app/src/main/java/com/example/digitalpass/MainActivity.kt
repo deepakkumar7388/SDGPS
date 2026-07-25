@@ -414,6 +414,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun actualNavigateToDashboard(role: String?) {
+        val sharedPreferencesOnBoarding = getSharedPreferences("DigitalPassPrefsOnBoarding", Context.MODE_PRIVATE)
+        val hasSeenOnboarding = sharedPreferencesOnBoarding.getBoolean("has_seen_onboarding", false)
+
+        if (!hasSeenOnboarding) {
+            val intent = Intent(this, OnboardingActivity::class.java)
+            intent.putExtra("role", role)
+            intent.putExtra("email", LoginUserDataHolder.loginUserData?.get("email"))
+            startActivity(intent)
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            finish()
+            return
+        }
+
         val intent = when (role?.lowercase()) {
             "admin", "principal", "hod", "faculty" -> Intent(this, ManagementMember::class.java)
             "student" -> Intent(this, Student::class.java)

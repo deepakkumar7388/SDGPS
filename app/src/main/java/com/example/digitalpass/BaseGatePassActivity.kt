@@ -14,6 +14,7 @@ import com.google.android.material.textfield.TextInputLayout
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import com.example.digitalpass.utils.setupEmptyState
 
 abstract class BaseGatePassActivity : BaseActivity() {
 
@@ -24,6 +25,8 @@ abstract class BaseGatePassActivity : BaseActivity() {
     protected var gatePassList = arrayListOf<HashMap<String, String>>()
 
     abstract val recyclerViewId: Int
+    open val emptyStateLogo: Int = R.drawable.emptyviewforgatepass
+    open val emptyStateText: String = "No Gate Pass Applied Yet\nApply Your First Gate Pass"
 
     protected var getCommonData = { gatePass: HashMap<String, String> ->
         gatePass["img"] = LoginUserDataHolder.loginUserData?.get("img") ?: ""
@@ -41,6 +44,11 @@ abstract class BaseGatePassActivity : BaseActivity() {
         recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
         adapter = RecentPassAdapter("selfGatePass", gatePassList)
         recyclerView.adapter = adapter
+        
+        val emptyView = findViewById<android.view.View>(R.id.emptyStateLayout)
+        if (emptyView != null) {
+            recyclerView.setupEmptyState(emptyView, emptyStateText, emptyStateLogo)
+        }
 
         val interInstitutionalSwitch = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.interInstitutionalSwitch)
         

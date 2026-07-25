@@ -21,6 +21,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import okhttp3.ResponseBody
 import androidx.appcompat.app.AlertDialog
+import com.example.digitalpass.utils.setupEmptyState
 
 class ReportActivity : BaseActivity() {
 
@@ -77,6 +78,11 @@ class ReportActivity : BaseActivity() {
             updateSelectionUI(selectedCount)
         }
         recyclerView.adapter = reportAdapter
+        
+        val emptyView = findViewById<View>(R.id.emptyStateLayout)
+        if (emptyView != null) {
+            recyclerView.setupEmptyState(emptyView, "No Reports Found", R.drawable.reportemptyview)
+        }
 
         swipeRefreshLayout.setOnRefreshListener {
             getReports()

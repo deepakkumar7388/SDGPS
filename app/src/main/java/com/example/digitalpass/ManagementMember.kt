@@ -43,6 +43,8 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.io.InputStream
+import com.example.digitalpass.utils.setupEmptyState
+import com.example.digitalpass.utils.evaluateEmptyState
 
 
 class ManagementMember : BaseActivity() {
@@ -244,6 +246,11 @@ class ManagementMember : BaseActivity() {
         LoginUserDataHolder.visitorListAdapter=visitorAdapter
         LoginUserDataHolder.gatePassListAdapter=gatepassAdapter
 
+        val emptyView = findViewById<View>(R.id.emptyStateLayout)
+        if (emptyView != null) {
+            recyclerView.setupEmptyState(emptyView, "No Data Found", R.drawable.commonemptyviewforgatepassandvisitor)
+        }
+        
         setupPassSyncAndObserve()
 
         val toggleGroup = findViewById<com.google.android.material.button.MaterialButtonToggleGroup>(R.id.toggleGroup)
@@ -264,6 +271,11 @@ class ManagementMember : BaseActivity() {
                 recyclerView.animate().alpha(0f).setDuration(150).withEndAction {
                     // Swap the adapter
                     recyclerView.adapter = if (isVisitor) visitorAdapter else gatepassAdapter
+
+                    if (emptyView != null) {
+                        recyclerView.setupEmptyState(emptyView, "No Data Found", R.drawable.commonemptyviewforgatepassandvisitor)
+                        recyclerView.evaluateEmptyState(emptyView)
+                    }
 
                     // Update button visual feedback
                     updateButtonStyles(isVisitor)

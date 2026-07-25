@@ -25,6 +25,8 @@ import retrofit2.Callback
 import retrofit2.Response
 import com.example.digitalpass.database.AppDatabase
 import com.example.digitalpass.database.UserEntity
+import android.view.View
+import com.example.digitalpass.utils.setupEmptyState
 
 class UserManagement : BaseActivity() {
 
@@ -139,6 +141,11 @@ class UserManagement : BaseActivity() {
             activityResultFromUserView.launch(intent)
         }
         membersRecyclerView.adapter = adapter
+        
+        val emptyView = findViewById<View>(R.id.emptyStateLayout)
+        if (emptyView != null) {
+            membersRecyclerView.setupEmptyState(emptyView, "No User Found", R.drawable.usermanagementemptyview)
+        }
 
         deleteUserButton.setOnClickListener {
             val selectedUsers = adapter.getSelectedUsers()

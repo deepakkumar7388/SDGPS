@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
@@ -85,7 +86,7 @@ class GatePassDetail : BaseActivity() {
         var phone=findViewById<TextView>(R.id.phone)
         var otherInfo=findViewById<TextView>(R.id.otherInformation)
         otherInfoDescription=findViewById(R.id.otherInformationDescription)
-        var callIcon=findViewById<MaterialButton>(R.id.callIcon)
+        var callIconForPhone=findViewById<MaterialButton>(R.id.callIcon)
         var editButton=findViewById<ImageView>(R.id.editButton)
         reject=findViewById(R.id.rejectButton)
         approve=findViewById(R.id.approveButton)
@@ -106,7 +107,7 @@ class GatePassDetail : BaseActivity() {
         if(intent.getStringExtra("operationType")=="self"){
             findViewById<MaterialCardView>(R.id.gatePassHistoryCardView).visibility=View.GONE
             reject?.visibility= View.GONE
-            callIcon.visibility=View.GONE
+            callIconForPhone.visibility=View.GONE
 
             if(gatePass["status"]=="pending"){
                 approve.text="Remove"
@@ -193,6 +194,14 @@ class GatePassDetail : BaseActivity() {
             else otherInfoDescription.visibility=View.GONE
         }
 
+        callIconForPhone.setOnClickListener {
+            if(gatePass["phone"]!="")callToPhone(gatePass["phone"])
+        }
+
+        findViewById<MaterialButton>(R.id.parentCallIcon).setOnClickListener {
+            if((gatePass["fatherphone"]?:"")!="")callToPhone(gatePass["fatherphone"])
+        }
+
         //check there is any tgRemark key in gatePass
         if(gatePass.containsKey("tgRemark")){
             tgRemarkLayout.visibility=View.VISIBLE
@@ -259,7 +268,9 @@ class GatePassDetail : BaseActivity() {
 
         if(gatePass["role"]=="student"&&gatePass["applyEmail"]!=LoginUserDataHolder.loginUserData?.get("email")){
             descriptionString=descriptionString+"\n UID : ${gatePass["uid"]}"+"\n Batch : ${gatePass["batch"]}"+
-                    "\n Father Name : ${gatePass["fathername"]}"+"\n Father Phone : ${gatePass["fatherphone"]}"
+                    "\n Father Name : ${gatePass["fathername"]}"
+            findViewById<ConstraintLayout>(R.id.parentPhoneLayout).visibility=View.VISIBLE
+            findViewById<TextView>(R.id.parentPhone).text=gatePass["fatherphone"]?:""
         }
         descriptionString=descriptionString+"\n Apply Date : ${gatePass["applyDate"]}"
         if(gatePass["remark"]?.trim()!="")descriptionString=descriptionString+"\n Remarks : ${gatePass["remark"]}"

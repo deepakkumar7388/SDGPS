@@ -118,6 +118,17 @@ open class BaseActivity : AppCompatActivity() {
                 locationCallback = null
             }
         }
+
+        else if(requestCode==100){
+            if(grantResults.isNotEmpty()&&grantResults[0]==android.content.pm.PackageManager.PERMISSION_GRANTED){
+                //make a call to the phone number
+                val intent = Intent(Intent.ACTION_CALL).apply {
+                    data = android.net.Uri.parse("tel:${phone}")
+                }
+                startActivity(intent)
+            }
+            else Toast.makeText(this,"Permission required to make call",Toast.LENGTH_SHORT).show()
+        }
     }
 
     fun setupNotificationBell() {
@@ -196,4 +207,26 @@ open class BaseActivity : AppCompatActivity() {
         
         userOperationViewModel.fetchCampuses(LoginUserDataHolder.token)
     }
+
+    private var phone=""
+    fun callToPhone(phoneNo: String?){
+        phone=phoneNo?:""
+        //check the permission to make phone call
+        if(checkPermission()) {
+
+            //make a call to the phone number
+            val intent = Intent(Intent.ACTION_CALL)
+            intent.data = android.net.Uri.parse("tel:${phone}")
+            startActivity(intent)
+        }
+    }
+
+    private fun checkPermission():Boolean {
+        if(checkSelfPermission(android.Manifest.permission.CALL_PHONE)==android.content.pm.PackageManager.PERMISSION_GRANTED){
+            return true
+        }
+        requestPermissions(arrayOf(android.Manifest.permission.CALL_PHONE),100)
+        return false
+    }
+
 }

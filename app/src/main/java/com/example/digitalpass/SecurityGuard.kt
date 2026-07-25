@@ -36,6 +36,8 @@ import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import com.example.digitalpass.utils.setupEmptyState
+import com.example.digitalpass.utils.evaluateEmptyState
 
 class SecurityGuard : BaseActivity() {
     private lateinit var profileImage: ImageView
@@ -150,6 +152,11 @@ class SecurityGuard : BaseActivity() {
         recyclerView.adapter = visitorAdapter
         LoginUserDataHolder.visitorListAdapter = visitorAdapter
         LoginUserDataHolder.gatePassListAdapter = gatePassAdapter
+        
+        val emptyView = findViewById<View>(R.id.emptyStateLayout)
+        if (emptyView != null) {
+            recyclerView.setupEmptyState(emptyView, "No Data Found", R.drawable.commonemptyviewforgatepassandvisitor)
+        }
 
         // Fetch initial data
         setupPassSyncAndObserve()
@@ -172,6 +179,11 @@ class SecurityGuard : BaseActivity() {
                     // Swap the adapter
                     recyclerView.adapter = if (isVisitor) visitorAdapter else gatePassAdapter
 
+                    if (emptyView != null) {
+                        recyclerView.setupEmptyState(emptyView, "No Data Found", R.drawable.commonemptyviewforgatepassandvisitor)
+                        recyclerView.evaluateEmptyState(emptyView)
+                    }
+
                     // Update button visual feedback
                     updateButtonStyles(isVisitor)
 
@@ -180,6 +192,9 @@ class SecurityGuard : BaseActivity() {
                 }.start()
             }
         }
+
+        //trigger user sync
+        userOperationViewModel.triggerUserSync(LoginUserDataHolder.token)
     }
 
     private fun setupSearchBar(){

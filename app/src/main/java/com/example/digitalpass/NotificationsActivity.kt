@@ -13,6 +13,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
 import com.example.digitalpass.CommonOperation.logout
+import com.example.digitalpass.utils.setupEmptyState
 
 class NotificationsActivity : AppCompatActivity() {
 
@@ -42,6 +43,11 @@ class NotificationsActivity : AppCompatActivity() {
             markAsRead(notification)
         }
         recyclerView.adapter = adapter
+        
+        val emptyView = findViewById<android.view.View>(R.id.emptyStateLayout)
+        if (emptyView != null) {
+            recyclerView.setupEmptyState(emptyView, "No Notifications", R.drawable.notificationemptyview)
+        }
 
         // Observe unread notifications
         database.notificationDao().getUnreadNotifications().observe(this) { notifications ->

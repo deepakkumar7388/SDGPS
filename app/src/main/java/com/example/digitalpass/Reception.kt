@@ -35,6 +35,7 @@ import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import com.example.digitalpass.utils.setupEmptyState
 
 class Reception : BaseActivity() {
     private lateinit var profileImage: ImageView
@@ -128,6 +129,12 @@ class Reception : BaseActivity() {
 
         //setup these adapter in LoginUserDataHolder
         LoginUserDataHolder.visitorListAdapter=visitorAdapter
+        
+        val emptyView = findViewById<View>(R.id.emptyStateLayout)
+        if (emptyView != null) {
+            recyclerView.setupEmptyState(emptyView, "No Data Found", R.drawable.commonemptyviewforgatepassandvisitor)
+        }
+        
         setupPassSyncAndObserve()
 
     }

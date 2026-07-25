@@ -19,6 +19,8 @@ import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import com.example.digitalpass.utils.setupEmptyState
+import android.view.View
 
 class LevelForBatch : BaseActivity() {
 
@@ -84,6 +86,16 @@ class LevelForBatch : BaseActivity() {
         //set adapter to recyclerView
         selectedMemberRecyclerView.adapter=selectedMemberAdapter
         unselectedMemberRecyclerView.adapter=unselectedMemberAdapter
+
+        val emptyStateSelected = findViewById<View>(R.id.emptyStateSelected)
+        if (emptyStateSelected != null) {
+            selectedMemberRecyclerView.setupEmptyState(emptyStateSelected, "No Selected Members", R.drawable.usermanagementemptyview)
+        }
+
+        val emptyStateUnselected = findViewById<View>(R.id.emptyStateUnselected)
+        if (emptyStateUnselected != null) {
+            unselectedMemberRecyclerView.setupEmptyState(emptyStateUnselected, "No Members Found", R.drawable.usermanagementemptyview)
+        }
 
         //setup search bar
         setupSearchBar()

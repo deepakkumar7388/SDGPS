@@ -140,6 +140,10 @@
             android:name="com.canhub.cropper.CropImageActivity"
             android:theme="@style/Base.Theme.AppCompat"
             android:exported="true" />
+        <activity
+            android:name=".OnboardingActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
     </application>
 
 </manifest>

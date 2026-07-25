@@ -21,6 +21,9 @@ import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import com.example.digitalpass.utils.setupEmptyState
+import com.example.digitalpass.utils.evaluateEmptyState
+import android.view.View
 
 class Batch : BaseActivity() {
 
@@ -120,6 +123,10 @@ class Batch : BaseActivity() {
                     if (!::batchAdapter.isInitialized) {
                         batchAdapter = BatchAdapter(allBatchList)
                         recyclerView.adapter = batchAdapter
+                        val emptyView = findViewById<View>(R.id.emptyStateLayout)
+                        if (emptyView != null) {
+                            recyclerView.setupEmptyState(emptyView, "No Batches Found", R.drawable.batchemptyview)
+                        }
                     } else {
                         // Refresh current filter state with new data
                         val searchBatch = findViewById<SearchView>(R.id.searchBatch)
@@ -179,6 +186,10 @@ class Batch : BaseActivity() {
                             if (!::batchAdapter.isInitialized) {
                                 batchAdapter = BatchAdapter(allBatchList)
                                 recyclerView.adapter = batchAdapter
+                                val emptyView = findViewById<View>(R.id.emptyStateLayout)
+                                if (emptyView != null) {
+                                    recyclerView.setupEmptyState(emptyView, "No Batches Found", R.drawable.batchemptyview)
+                                }
                             } else {
                                 val searchBatch = findViewById<SearchView>(R.id.searchBatch)
                                 filterWithQueryAndToggle(searchBatch.query?.toString())
@@ -250,6 +261,10 @@ class Batch : BaseActivity() {
 
         if (::batchAdapter.isInitialized) {
             batchAdapter.updateList(ArrayList(filteredList))
+            val emptyView = findViewById<View>(R.id.emptyStateLayout)
+            if (emptyView != null) {
+                recyclerView.evaluateEmptyState(emptyView)
+            }
         }
     }
 }
