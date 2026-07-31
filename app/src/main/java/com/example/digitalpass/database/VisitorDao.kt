@@ -13,6 +13,9 @@ interface VisitorDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertAll(visitors: List<VisitorEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertVisitor(visitor: VisitorEntity)
+
     @Query("DELETE FROM visitors")
     fun deleteAllVisitors()
 

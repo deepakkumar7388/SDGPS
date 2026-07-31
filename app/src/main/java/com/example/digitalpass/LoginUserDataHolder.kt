@@ -30,6 +30,7 @@ object LoginUserDataHolder {
     var token: String = ""
 
     var campusForBatchOperation=""
+    var appContext: Context? = null
 
 
      const val PREFS_NAME = "DigitalPassPrefs"
@@ -229,6 +230,14 @@ object LoginUserDataHolder {
             if (position != -1) {
                 visitorList[position]["status"] = data.getString("operation")
                 filterAndUpdateItem(visitorList[position])
+                
+                appContext?.let { ctx ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        com.example.digitalpass.database.AppDatabase.getDatabase(ctx).visitorDao().insertVisitor(
+                            com.example.digitalpass.database.VisitorEntity(visitorList[position]["visitorId"]!!.toInt(), visitorList[position])
+                        )
+                    }
+                }
             }
         }
     }
@@ -265,6 +274,14 @@ object LoginUserDataHolder {
                                 filterAndUpdateItem(updatedVisitor)
                             }
                         }
+                        
+                        appContext?.let { ctx ->
+                            CoroutineScope(Dispatchers.IO).launch {
+                                com.example.digitalpass.database.AppDatabase.getDatabase(ctx).visitorDao().insertVisitor(
+                                    com.example.digitalpass.database.VisitorEntity(updatedVisitor["visitorId"]!!.toInt(), updatedVisitor)
+                                )
+                            }
+                        }
                     }
 
                 }
@@ -299,40 +316,15 @@ object LoginUserDataHolder {
     }
 
     fun filterAndUpdateItem(updatedItem:HashMap<String,String>){
-        if(listType=="visitor"){
+        if(updatedItem.containsKey("visitorId")){
             //also we have to filter this user on the basis of searchQuery
             if(updatedItem["name"]?.contains(searchQuery,ignoreCase = true)?:false)visitorListAdapter?.updateItem(updatedItem)
         }
-        else{
+        else if (updatedItem.containsKey("gatePassId")){
             if(updatedItem["name"]?.contains(searchQuery,ignoreCase = true)?:false)gatePassListAdapter?.updateItem(updatedItem)
         }
     }
 
-
-
-//    fun getGatePassList() {
-//        //get gate pass list
-//        val call = RetrofitClient.instance.getRecentGatePassList(token)
-//        call.enqueue(object : Callback<ArrayList<HashMap<String, String>>> {
-//            override fun onResponse(
-//                call: Call<ArrayList<HashMap<String, String>>?>,
-//                response: Response<ArrayList<HashMap<String, String>>?>
-//            ) {
-//                if (response.isSuccessful) {
-//                    gatePassList = response.body() ?: ArrayList()
-//                    //update copy of gatePassList
-//                    gatePassListAdapter?.updateList(ArrayList(gatePassList))
-//                }
-//            }
-//
-//            override fun onFailure(
-//                call: Call<ArrayList<HashMap<String, String>>?>,
-//                t: Throwable
-//            ) {
-//                Log.d("TAG", "getGatePassList onFailure: ${t.message}")
-//            }
-//        })
-//    }
 
     fun insertNewGatePass(gatePassId:String){
         //now get the new insert gate pass
@@ -355,6 +347,15 @@ object LoginUserDataHolder {
                         val nameStr = newGatePass["name"] ?: ""
                         if(listType=="gatePass" && nameStr.contains(searchQuery, ignoreCase = true)){
                             gatePassListAdapter?.insertItem(newGatePass)
+                        }
+
+                        //insert this gate pass in room database
+                        appContext?.let { ctx ->
+                            CoroutineScope(Dispatchers.IO).launch {
+                                com.example.digitalpass.database.AppDatabase.getDatabase(ctx).gatePassDao().insertGatePass(
+                                    com.example.digitalpass.database.GatePassEntity(newGatePass["gatePassId"]!!.toInt(), newGatePass)
+                                )
+                            }
                         }
                     }
                 }
@@ -380,15 +381,25 @@ object LoginUserDataHolder {
             ) {
                 if(response.isSuccessful){
                     val updatedGatePass = response.body() ?: return
-                    val position = gatePassList.indexOfFirst { it["gatePassId"] == updatedGatePass["gatePassId"] }
-                    if (position != -1) {
-                        gatePassList[position] = updatedGatePass
-                        filterAndUpdateItem(updatedGatePass)
-                    } else {
-                        gatePassList.add(0, updatedGatePass)
-                        val nameStr = updatedGatePass["name"] ?: ""
-                        if(listType=="gatePass" && nameStr.contains(searchQuery, ignoreCase = true)){
-                            gatePassListAdapter?.insertItem(updatedGatePass)
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val position = gatePassList.indexOfFirst { it["gatePassId"] == updatedGatePass["gatePassId"] }
+                        if (position != -1) {
+                            gatePassList[position] = updatedGatePass
+                            filterAndUpdateItem(updatedGatePass)
+                        } else {
+                            gatePassList.add(0, updatedGatePass)
+                            val nameStr = updatedGatePass["name"] ?: ""
+                            if(listType=="gatePass" && nameStr.contains(searchQuery, ignoreCase = true)){
+                                gatePassListAdapter?.insertItem(updatedGatePass)
+                            }
+                        }
+                        
+                        appContext?.let { ctx ->
+                            CoroutineScope(Dispatchers.IO).launch {
+                                com.example.digitalpass.database.AppDatabase.getDatabase(ctx).gatePassDao().insertGatePass(
+                                    com.example.digitalpass.database.GatePassEntity(updatedGatePass["gatePassId"]!!.toInt(), updatedGatePass)
+                                )
+                            }
                         }
                     }
                 }
@@ -410,6 +421,14 @@ object LoginUserDataHolder {
                 if (data.has("reason")) gatePassList[position]["reason"] = data.getString("reason")
                 if (data.has("tgRemark")) gatePassList[position]["tgRemark"] = data.getString("tgRemark")
                 filterAndUpdateItem(gatePassList[position])
+                
+                appContext?.let { ctx ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        com.example.digitalpass.database.AppDatabase.getDatabase(ctx).gatePassDao().insertGatePass(
+                            com.example.digitalpass.database.GatePassEntity(gatePassList[position]["gatePassId"]!!.toInt(), gatePassList[position])
+                        )
+                    }
+                }
             }
         }
     }

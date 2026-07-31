@@ -104,15 +104,23 @@ class RecentPassAdapter(var listType:String,var recentPassList:ArrayList<HashMap
 
 
     fun updateItem(updatedVisitor:HashMap<String,String>){
-        var position=recentPassList.indexOfFirst { it["visitorId"]==updatedVisitor["visitorId"] }
+        var position = if(listType == "visitor") {
+            recentPassList.indexOfFirst { it["visitorId"] == updatedVisitor["visitorId"] }
+        } else {
+            recentPassList.indexOfFirst { it["gatePassId"] == updatedVisitor["gatePassId"] }
+        }
 
         if(position==-1)return
-        //replace item with updated visitor
+        //replace item with updated visitor/gatePass
         recentPassList[position]=updatedVisitor
         notifyItemChanged(position)
     }
-    fun insertItem(newVisitor:HashMap<String,String>){
-        recentPassList.add(0,newVisitor)
+    fun insertItem(newItem:HashMap<String,String>){
+        val idKey = if (listType == "visitor") "visitorId" else "gatePassId"
+        val existingIndex = recentPassList.indexOfFirst { it[idKey] == newItem[idKey] }
+        if (existingIndex == -1) {
+            recentPassList.add(0, newItem)
+        }
         notifyItemInserted(0)
         notifyItemRangeChanged(0,recentPassList.size)
     }

@@ -74,8 +74,6 @@ object SocketManager {
     }
 
     private fun joinRoom(){
-        var data= JSONObject()
-        data.put("token",LoginUserDataHolder.token)
         socket.emit("joinRoom",LoginUserDataHolder.token)
     }
 
