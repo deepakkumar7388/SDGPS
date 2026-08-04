@@ -115,14 +115,20 @@ class RecentPassAdapter(var listType:String,var recentPassList:ArrayList<HashMap
         recentPassList[position]=updatedVisitor
         notifyItemChanged(position)
     }
-    fun insertItem(newItem:HashMap<String,String>){
+    fun insertItem(newItem: HashMap<String, String>) {
         val idKey = if (listType == "visitor") "visitorId" else "gatePassId"
         val existingIndex = recentPassList.indexOfFirst { it[idKey] == newItem[idKey] }
         if (existingIndex == -1) {
+            // Item is genuinely new — insert at top and notify
             recentPassList.add(0, newItem)
+            notifyItemInserted(0)
+            notifyItemRangeChanged(0, recentPassList.size)
+        } else {
+            // Item already exists (duplicate socket event) — update it in-place
+            // instead of crashing with an IndexOutOfBoundsException
+            recentPassList[existingIndex] = newItem
+            notifyItemChanged(existingIndex)
         }
-        notifyItemInserted(0)
-        notifyItemRangeChanged(0,recentPassList.size)
     }
 
 

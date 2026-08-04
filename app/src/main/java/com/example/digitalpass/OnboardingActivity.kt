@@ -146,11 +146,20 @@ class OnboardingActivity : AppCompatActivity() {
             "reception" -> Intent(this, Reception::class.java)
             else -> null
         }
-        intent?.let {
-            if (role != "student") SocketManager.connect()
-            startActivity(it)
+
+        if (intent != null) {
+            // Valid role — connect socket for non-students and navigate
+            if (role?.lowercase() != "student") SocketManager.connect()
+            startActivity(intent)
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            finish()  // Only finish once we have confirmed a valid destination
+        } else {
+            // Role was null or unrecognised — fall back to login screen
+            // so the user is never left with a blank screen
+            val fallback = Intent(this, MainActivity::class.java)
+            fallback.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(fallback)
+            finish()
         }
-        finish()
     }
 }

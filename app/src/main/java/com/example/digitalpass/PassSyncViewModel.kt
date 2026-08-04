@@ -122,7 +122,6 @@ class PassSyncViewModel(
         viewModelScope.launch {
             val list = visitorRepository.getHistoricalVisitors(todayStart)
             _historicalVisitors.postValue(list)
-            _historicalVisitors.postValue(list)
         }
     }
 

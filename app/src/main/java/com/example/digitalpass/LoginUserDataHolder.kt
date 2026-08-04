@@ -13,6 +13,7 @@ import androidx.exifinterface.media.ExifInterface
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -31,6 +32,14 @@ object LoginUserDataHolder {
 
     var campusForBatchOperation=""
     var appContext: Context? = null
+
+    /**
+     * A supervised coroutine scope tied to the Application lifetime.
+     * Uses SupervisorJob so that one failed DB write does not cancel other
+     * in-flight writes. Safe to use from socket callbacks and other
+     * non-lifecycle-aware places because appContext is the Application context.
+     */
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 
      const val PREFS_NAME = "DigitalPassPrefs"
@@ -232,9 +241,10 @@ object LoginUserDataHolder {
                 filterAndUpdateItem(visitorList[position])
                 
                 appContext?.let { ctx ->
-                    CoroutineScope(Dispatchers.IO).launch {
+                    applicationScope.launch {
+                        val visitorIdInt = visitorList[position]["visitorId"]?.toIntOrNull() ?: return@launch
                         com.example.digitalpass.database.AppDatabase.getDatabase(ctx).visitorDao().insertVisitor(
-                            com.example.digitalpass.database.VisitorEntity(visitorList[position]["visitorId"]!!.toInt(), visitorList[position])
+                            com.example.digitalpass.database.VisitorEntity(visitorIdInt, visitorList[position])
                         )
                     }
                 }
@@ -276,9 +286,10 @@ object LoginUserDataHolder {
                         }
                         
                         appContext?.let { ctx ->
-                            CoroutineScope(Dispatchers.IO).launch {
+                            applicationScope.launch {
+                                val visitorIdInt = updatedVisitor["visitorId"]?.toIntOrNull() ?: return@launch
                                 com.example.digitalpass.database.AppDatabase.getDatabase(ctx).visitorDao().insertVisitor(
-                                    com.example.digitalpass.database.VisitorEntity(updatedVisitor["visitorId"]!!.toInt(), updatedVisitor)
+                                    com.example.digitalpass.database.VisitorEntity(visitorIdInt, updatedVisitor)
                                 )
                             }
                         }
@@ -351,9 +362,10 @@ object LoginUserDataHolder {
 
                         //insert this gate pass in room database
                         appContext?.let { ctx ->
-                            CoroutineScope(Dispatchers.IO).launch {
+                            applicationScope.launch {
+                                val gatePassIdInt = newGatePass["gatePassId"]?.toDoubleOrNull()?.toInt() ?: return@launch
                                 com.example.digitalpass.database.AppDatabase.getDatabase(ctx).gatePassDao().insertGatePass(
-                                    com.example.digitalpass.database.GatePassEntity(newGatePass["gatePassId"]!!.toInt(), newGatePass)
+                                    com.example.digitalpass.database.GatePassEntity(gatePassIdInt, newGatePass)
                                 )
                             }
                         }
@@ -395,9 +407,10 @@ object LoginUserDataHolder {
                         }
                         
                         appContext?.let { ctx ->
-                            CoroutineScope(Dispatchers.IO).launch {
+                            applicationScope.launch {
+                                val gatePassIdInt = updatedGatePass["gatePassId"]?.toDoubleOrNull()?.toInt() ?: return@launch
                                 com.example.digitalpass.database.AppDatabase.getDatabase(ctx).gatePassDao().insertGatePass(
-                                    com.example.digitalpass.database.GatePassEntity(updatedGatePass["gatePassId"]!!.toInt(), updatedGatePass)
+                                    com.example.digitalpass.database.GatePassEntity(gatePassIdInt, updatedGatePass)
                                 )
                             }
                         }
@@ -423,9 +436,10 @@ object LoginUserDataHolder {
                 filterAndUpdateItem(gatePassList[position])
                 
                 appContext?.let { ctx ->
-                    CoroutineScope(Dispatchers.IO).launch {
+                    applicationScope.launch {
+                        val gatePassIdInt = gatePassList[position]["gatePassId"]?.toDoubleOrNull()?.toInt() ?: return@launch
                         com.example.digitalpass.database.AppDatabase.getDatabase(ctx).gatePassDao().insertGatePass(
-                            com.example.digitalpass.database.GatePassEntity(gatePassList[position]["gatePassId"]!!.toInt(), gatePassList[position])
+                            com.example.digitalpass.database.GatePassEntity(gatePassIdInt, gatePassList[position])
                         )
                     }
                 }

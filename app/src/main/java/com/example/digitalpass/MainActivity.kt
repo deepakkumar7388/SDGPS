@@ -414,6 +414,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun actualNavigateToDashboard(role: String?) {
+        // Guard: if role is missing we cannot navigate anywhere — send back to login
+        if (role.isNullOrBlank()) {
+            LoginUserDataHolder.token = ""
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+            return
+        }
+
         val sharedPreferencesOnBoarding = getSharedPreferences("DigitalPassPrefsOnBoarding", Context.MODE_PRIVATE)
         val hasSeenOnboarding = sharedPreferencesOnBoarding.getBoolean("has_seen_onboarding", false)
 
@@ -427,7 +435,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val intent = when (role?.lowercase()) {
+        val intent = when (role.lowercase()) {
             "admin", "principal", "hod", "faculty" -> Intent(this, ManagementMember::class.java)
             "student" -> Intent(this, Student::class.java)
             "security guard" -> Intent(this, SecurityGuard::class.java)
@@ -435,7 +443,7 @@ class MainActivity : AppCompatActivity() {
             else -> null
         }
         intent?.let {
-            if (role != "student") SocketManager.connect()
+            if (role.lowercase() != "student") SocketManager.connect()
             startActivity(it)
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
             finish()

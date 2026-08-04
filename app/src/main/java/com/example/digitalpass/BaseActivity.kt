@@ -50,6 +50,28 @@ open class BaseActivity : AppCompatActivity() {
         galleryLauncher.launch("image/*")
     }
 
+    /**
+     * Modern ActivityResult-based launcher for CALL_PHONE permission.
+     * Replaces the deprecated requestPermissions() + onRequestPermissionsResult()
+     * pattern which is unreliable on Android 13+ and many OEM custom ROMs.
+     * The pending phone number is stored in pendingCallPhone so it survives
+     * the async permission flow without race conditions.
+     */
+    private var pendingCallPhone: String = ""
+    private val callPhoneLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val intent = Intent(Intent.ACTION_CALL).apply {
+                data = android.net.Uri.parse("tel:$pendingCallPhone")
+            }
+            startActivity(intent)
+        } else {
+            Toast.makeText(this, "Permission required to make call", Toast.LENGTH_SHORT).show()
+        }
+        pendingCallPhone = ""
+    }
+
     override fun attachBaseContext(newBase: android.content.Context) {
         val newConfig = android.content.res.Configuration(newBase.resources.configuration)
         newConfig.fontScale = 1.0f
@@ -120,14 +142,9 @@ open class BaseActivity : AppCompatActivity() {
         }
 
         else if(requestCode==100){
-            if(grantResults.isNotEmpty()&&grantResults[0]==android.content.pm.PackageManager.PERMISSION_GRANTED){
-                //make a call to the phone number
-                val intent = Intent(Intent.ACTION_CALL).apply {
-                    data = android.net.Uri.parse("tel:${phone}")
-                }
-                startActivity(intent)
-            }
-            else Toast.makeText(this,"Permission required to make call",Toast.LENGTH_SHORT).show()
+            // CALL_PHONE permission is now handled by callPhoneLauncher (ActivityResult API).
+            // This block is intentionally left empty for backward compatibility with
+            // any Android version that might still route through this path.
         }
     }
 
@@ -208,25 +225,20 @@ open class BaseActivity : AppCompatActivity() {
         userOperationViewModel.fetchCampuses(LoginUserDataHolder.token)
     }
 
-    private var phone=""
-    fun callToPhone(phoneNo: String?){
-        phone=phoneNo?:""
-        //check the permission to make phone call
-        if(checkPermission()) {
-
-            //make a call to the phone number
-            val intent = Intent(Intent.ACTION_CALL)
-            intent.data = android.net.Uri.parse("tel:${phone}")
+    fun callToPhone(phoneNo: String?) {
+        if (phoneNo.isNullOrBlank()) return
+        pendingCallPhone = phoneNo
+        if (checkSelfPermission(android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+            // Permission already granted — make the call immediately
+            val intent = Intent(Intent.ACTION_CALL).apply {
+                data = android.net.Uri.parse("tel:$pendingCallPhone")
+            }
             startActivity(intent)
+            pendingCallPhone = ""
+        } else {
+            // Request permission via the modern ActivityResult API
+            callPhoneLauncher.launch(android.Manifest.permission.CALL_PHONE)
         }
-    }
-
-    private fun checkPermission():Boolean {
-        if(checkSelfPermission(android.Manifest.permission.CALL_PHONE)==android.content.pm.PackageManager.PERMISSION_GRANTED){
-            return true
-        }
-        requestPermissions(arrayOf(android.Manifest.permission.CALL_PHONE),100)
-        return false
     }
 
 }
