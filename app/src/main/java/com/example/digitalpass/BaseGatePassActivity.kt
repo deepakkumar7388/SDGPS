@@ -249,7 +249,8 @@ abstract class BaseGatePassActivity : BaseActivity() {
                 applyButton?.isEnabled = true
                 dialogApplyButton.isEnabled = true
                 if (response.isSuccessful) {
-                    triggerSuccessAnimation(response.body()!!)
+                    val body = response.body() ?: return
+                    triggerSuccessAnimation(body)
                 } else {
                     MaterialAlertDialogBuilder(this@BaseGatePassActivity)
                         .setTitle("Alert")
