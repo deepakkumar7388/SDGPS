@@ -30,6 +30,11 @@ abstract class AppDatabase : RoomDatabase() {
                     "digitalpass_database"
                 )
                 .fallbackToDestructiveMigration()
+                // Explicitly enable WAL mode on all Android versions.
+                // This prevents older OS versions from locking the entire database
+                // when a sync API call performs a bulk insert, allowing the home screen
+                // to still read data concurrently without throwing an exception.
+                .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .build()
                 INSTANCE = instance
                 instance

@@ -30,6 +30,7 @@ import com.example.digitalpass.database.AppDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
@@ -241,7 +242,9 @@ class SecurityGuard : BaseActivity() {
     private fun checkPermissionOfSecurityGuard() {
 
         progressBar?.startProgressBar()
-        CoroutineScope(Dispatchers.IO).launch {
+        // Use lifecycleScope so the callback is cancelled if the activity is destroyed
+        // (prevents IllegalStateException / NPE on older devices when activity dies mid-request)
+        lifecycleScope.launch(Dispatchers.IO) {
             RetrofitClient.instance.checkPermissionOfSecurityGuard(LoginUserDataHolder.token)
                 .enqueue(object : Callback<ResponseBody> {
                     override fun onResponse(call: Call<ResponseBody?>, response: Response<ResponseBody?>) {

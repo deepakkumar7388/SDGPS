@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.digitalpass.database.GatePassEntity
 import com.example.digitalpass.database.VisitorEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class PassSyncViewModel(
@@ -48,7 +49,7 @@ class PassSyncViewModel(
     fun triggerGatePassSync(token: String) {
         if (isSyncingGatePasses) return
         isSyncingGatePasses = true
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 val data = gatePassRepository.syncGatePasses(token)
                 _gatePassSyncState.postValue(Result.success(data))
@@ -63,7 +64,7 @@ class PassSyncViewModel(
     fun triggerInterInstitutionalSync(token: String) {
         if (isSyncingInterInstitutional) return
         isSyncingInterInstitutional = true
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 val data = interInstitutionalGatePassRepository.syncInterInstitutionalGatePasses(token)
                 _interInstitutionalSyncState.postValue(Result.success(data))
@@ -78,7 +79,7 @@ class PassSyncViewModel(
     fun triggerVisitorSync(token: String) {
         if (isSyncingVisitors) return
         isSyncingVisitors = true
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 val data = visitorRepository.syncVisitors(token)
                 _visitorSyncState.postValue(Result.success(data))
@@ -91,44 +92,56 @@ class PassSyncViewModel(
     }
 
     fun loadActiveGatePasses(todayStart: String, todayEnd: String) {
-        viewModelScope.launch {
-            val list = gatePassRepository.getActiveGatePasses(todayStart, todayEnd)
-            _activeGatePasses.postValue(list)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = gatePassRepository.getActiveGatePasses(todayStart, todayEnd)
+                _activeGatePasses.postValue(list)
+            } catch (e: Exception) {}
         }
     }
 
     fun loadHistoricalGatePasses(todayStart: String) {
-        viewModelScope.launch {
-            val list = gatePassRepository.getHistoricalGatePasses(todayStart)
-            _historicalGatePasses.postValue(list)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = gatePassRepository.getHistoricalGatePasses(todayStart)
+                _historicalGatePasses.postValue(list)
+            } catch (e: Exception) {}
         }
     }
 
     fun loadActiveVisitors(todayStart: String, todayEnd: String) {
-        viewModelScope.launch {
-            val list = visitorRepository.getActiveVisitors(todayStart, todayEnd)
-            _activeVisitors.postValue(list)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = visitorRepository.getActiveVisitors(todayStart, todayEnd)
+                _activeVisitors.postValue(list)
+            } catch (e: Exception) {}
         }
     }
 
     fun loadActiveInterInstitutionalGatePasses(todayStart: String, todayEnd: String) {
-        viewModelScope.launch {
-            val list = interInstitutionalGatePassRepository.getActiveGatePasses(todayStart, todayEnd)
-            _activeInterInstitutional.postValue(list)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = interInstitutionalGatePassRepository.getActiveGatePasses(todayStart, todayEnd)
+                _activeInterInstitutional.postValue(list)
+            } catch (e: Exception) {}
         }
     }
 
     fun loadHistoricalVisitors(todayStart: String) {
-        viewModelScope.launch {
-            val list = visitorRepository.getHistoricalVisitors(todayStart)
-            _historicalVisitors.postValue(list)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = visitorRepository.getHistoricalVisitors(todayStart)
+                _historicalVisitors.postValue(list)
+            } catch (e: Exception) {}
         }
     }
 
     fun loadHistoricalInterInstitutionalGatePasses(todayStart: String) {
-        viewModelScope.launch {
-            val list = interInstitutionalGatePassRepository.getHistoricalGatePasses(todayStart)
-            _historicalInterInstitutional.postValue(list)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = interInstitutionalGatePassRepository.getHistoricalGatePasses(todayStart)
+                _historicalInterInstitutional.postValue(list)
+            } catch (e: Exception) {}
         }
     }
 
@@ -142,23 +155,29 @@ class PassSyncViewModel(
     val rangeVisitors: LiveData<List<VisitorEntity>> = _rangeVisitors
 
     fun loadGatePassesByRange(startDate: String, endDate: String) {
-        viewModelScope.launch {
-            val list = gatePassRepository.getGatePassesByDateRange(startDate, endDate)
-            _rangeGatePasses.postValue(list)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = gatePassRepository.getGatePassesByDateRange(startDate, endDate)
+                _rangeGatePasses.postValue(list)
+            } catch (e: Exception) {}
         }
     }
 
     fun loadInterInstitutionalByRange(startDate: String, endDate: String) {
-        viewModelScope.launch {
-            val list = interInstitutionalGatePassRepository.getGatePassesByDateRange(startDate, endDate)
-            _rangeInterInstitutional.postValue(list)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = interInstitutionalGatePassRepository.getGatePassesByDateRange(startDate, endDate)
+                _rangeInterInstitutional.postValue(list)
+            } catch (e: Exception) {}
         }
     }
 
     fun loadVisitorsByRange(startDate: String, endDate: String) {
-        viewModelScope.launch {
-            val list = visitorRepository.getVisitorsByDateRange(startDate, endDate)
-            _rangeVisitors.postValue(list)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = visitorRepository.getVisitorsByDateRange(startDate, endDate)
+                _rangeVisitors.postValue(list)
+            } catch (e: Exception) {}
         }
     }
 
@@ -169,16 +188,20 @@ class PassSyncViewModel(
     val selfInterInstitutional: LiveData<List<GatePassEntity>> = _selfInterInstitutional
 
     fun loadSelfGatePasses(email: String) {
-        viewModelScope.launch {
-            val list = gatePassRepository.getGatePassesByEmail(email)
-            _selfGatePasses.postValue(list)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = gatePassRepository.getGatePassesByEmail(email)
+                _selfGatePasses.postValue(list)
+            } catch (e: Exception) {}
         }
     }
 
     fun loadSelfInterInstitutional(email: String) {
-        viewModelScope.launch {
-            val list = interInstitutionalGatePassRepository.getGatePassesByEmail(email)
-            _selfInterInstitutional.postValue(list)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = interInstitutionalGatePassRepository.getGatePassesByEmail(email)
+                _selfInterInstitutional.postValue(list)
+            } catch (e: Exception) {}
         }
     }
 }

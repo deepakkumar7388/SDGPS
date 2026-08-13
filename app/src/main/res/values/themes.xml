@@ -1,8 +1,11 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.DigitalPass" parent="Theme.Material3.Light.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <!-- Suppress Android 15 edge-to-edge enforcement warning.
+             setStatusBarColor / setNavigationBarColor are called internally by
+             the Material BottomSheetDialog library (not our code). Remove this item
+             once a Material library version ships with native Android 15 support. -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
     <style name="Theme.DigitalPass" parent="Base.Theme.DigitalPass" />

@@ -81,7 +81,6 @@ class Student : BaseGatePassActivity() {
         }
 
         applyButton = findViewById(R.id.applyForGatePass)
-
         setupGatePassUI()
     }
 }

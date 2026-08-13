@@ -128,8 +128,10 @@ class MainActivity : AppCompatActivity() {
                                             sharedPreferences.edit().putString(savedHashKey, currentHash).apply()
                                         } catch (e: Exception) {
                                             Log.e("MainActivity", "Failed to save credential", e)
+                                        } finally {
+                                            // Always navigate — even if CredentialManager fails on older/non-Play-Services devices
+                                            getPermission()
                                         }
-                                        getPermission()
                                     }
                                 }
                             }
@@ -443,9 +445,11 @@ class MainActivity : AppCompatActivity() {
             else -> null
         }
         intent?.let {
-            if (role.lowercase() != "student") SocketManager.connect()
             startActivity(it)
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            // Connect AFTER startActivity so the destination activity initialises its
+            // views before any socket events can arrive (avoids NPE on slow/old devices).
+            if (role.lowercase() != "student") SocketManager.connect()
             finish()
         }
     }

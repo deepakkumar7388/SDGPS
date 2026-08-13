@@ -7,14 +7,14 @@ plugins {
 
 android {
     namespace = "com.example.digitalpass"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.digitalpass"
+        applicationId = "com.sistec.digitalpass"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 36
+        versionCode = 3
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         multiDexEnabled = true
@@ -37,6 +37,12 @@ android {
         jvmTarget = "1.8"
     }
     packaging {
+        jniLibs {
+            // Required for 16 KB memory page size support (Android 15+).
+            // Stores native .so libraries uncompressed and page-aligned in the APK/AAB.
+            // Without this, devices with 16 KB pages may fail to install or crash.
+            useLegacyPackaging = false
+        }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "META-INF/DEPENDENCIES"

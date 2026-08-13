@@ -250,12 +250,15 @@ class ForgetPassword : AppCompatActivity() {
 
                         CoroutineScope(Dispatchers.Main).launch {
                             try {
-                                credentialManager.createCredential(this@ForgetPassword,passwordRequest)
+                                credentialManager.createCredential(this@ForgetPassword, passwordRequest)
                                 Toast.makeText(this@ForgetPassword, "Credential saved", Toast.LENGTH_SHORT).show()
-                            } catch (e: CreateCredentialException) {
+                            } catch (e: Exception) {
+                                // Credential Manager UI not available on this device (e.g. ActivityNotFoundException
+                                // on devices without full Google Play Services) — silently skip, still navigate.
+                                android.util.Log.w("ForgetPassword", "Credential save skipped: ${e.message}")
                             }
 
-                            // Now navigate to MainActivity
+                            // Always navigate to splash/login regardless of credential save result
                             val intent = Intent(this@ForgetPassword, splashScreen::class.java)
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                             startActivity(intent)

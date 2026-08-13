@@ -129,9 +129,7 @@ class OnboardingActivity : AppCompatActivity() {
     private fun finishOnboarding() {
         val sharedPreferences = getSharedPreferences("DigitalPassPrefsOnBoarding", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
-        
-        // Mark onboarding as seen for this specific user
-        val safeEmail = email ?: LoginUserDataHolder.loginUserData?.get("email") ?: "unknown"
+
         editor.putBoolean("has_seen_onboarding", true)
         editor.apply()
 
@@ -148,10 +146,13 @@ class OnboardingActivity : AppCompatActivity() {
         }
 
         if (intent != null) {
-            // Valid role — connect socket for non-students and navigate
-            if (role?.lowercase() != "student") SocketManager.connect()
             startActivity(intent)
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            // Connect socket AFTER startActivity so the destination activity
+            // initialises its views before any socket events can arrive.
+            // Calling connect() before startActivity caused socket events to fire
+            // against lateinit adapters that were not yet set up — crashing the app.
+            if (role?.lowercase() != "student") SocketManager.connect()
             finish()  // Only finish once we have confirmed a valid destination
         } else {
             // Role was null or unrecognised — fall back to login screen
