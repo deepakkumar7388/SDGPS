@@ -106,12 +106,16 @@ class UserHistory : BaseActivity() {
         gatePassAdapter = RecentPassAdapter("gatePass", ArrayList())
         visitorAdapter.listTypeByDate = "history"
         gatePassAdapter.listTypeByDate = "history"
-        recyclerView.adapter = visitorAdapter
+        val userEmail = LoginUserDataHolder.loginUserData?.get("email") ?: ""
+        val isStudent = LoginUserDataHolder.loginUserData?.get("role") == "student"
+
+        recyclerView.adapter = if (isStudent) gatePassAdapter else visitorAdapter
         
         val emptyView = findViewById<View>(R.id.emptyStateLayout)
         if (emptyView != null) {
             recyclerView.setupEmptyState(emptyView, "No History Found", R.drawable.historyemptyview)
         }
+        
 
         // Setup observers for local cache
         val interInstitutionalSwitch = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.interInstitutionalSwitch)
@@ -119,6 +123,9 @@ class UserHistory : BaseActivity() {
         passSyncViewModel.historicalInterInstitutional.observe(this) { list ->
             if (interInstitutionalSwitch?.isChecked == true) {
                 dateGatePassList = ArrayList(list.map { it.passData })
+                if (isStudent) {
+                    dateGatePassList = ArrayList(dateGatePassList.filter { it["applyEmail"] == userEmail })
+                }
                 gatePassAdapter.updateList(dateGatePassList)
                 recentGatePassList = dateGatePassList
                 progressBar?.stopAnimation()
@@ -128,6 +135,9 @@ class UserHistory : BaseActivity() {
         passSyncViewModel.historicalGatePasses.observe(this) { list ->
             if (interInstitutionalSwitch?.isChecked != true) {
                 dateGatePassList = ArrayList(list.map { it.passData })
+                if (isStudent) {
+                    dateGatePassList = ArrayList(dateGatePassList.filter { it["applyEmail"] == userEmail })
+                }
                 gatePassAdapter.updateList(dateGatePassList)
                 recentGatePassList = dateGatePassList
                 progressBar?.stopAnimation()
@@ -144,6 +154,9 @@ class UserHistory : BaseActivity() {
         passSyncViewModel.rangeInterInstitutional.observe(this) { list ->
             if (interInstitutionalSwitch?.isChecked == true) {
                 dateGatePassList = ArrayList(list.map { it.passData })
+                if (isStudent) {
+                    dateGatePassList = ArrayList(dateGatePassList.filter { it["applyEmail"] == userEmail })
+                }
                 gatePassAdapter.updateList(dateGatePassList)
                 progressBar?.stopAnimation()
             }
@@ -152,6 +165,9 @@ class UserHistory : BaseActivity() {
         passSyncViewModel.rangeGatePasses.observe(this) { list ->
             if (interInstitutionalSwitch?.isChecked != true) {
                 dateGatePassList = ArrayList(list.map { it.passData })
+                if (isStudent) {
+                    dateGatePassList = ArrayList(dateGatePassList.filter { it["applyEmail"] == userEmail })
+                }
                 gatePassAdapter.updateList(dateGatePassList)
                 progressBar?.stopAnimation()
             }
@@ -168,7 +184,9 @@ class UserHistory : BaseActivity() {
         }
 
         //get visitorList and gatePassList
-        getVisitorList(fromTimeStamp, toTimeStamp)
+        if (!isStudent) {
+            getVisitorList(fromTimeStamp, toTimeStamp)
+        }
         getGatePassList(fromTimeStamp, toTimeStamp)
 
         //setup searchBar
@@ -176,8 +194,14 @@ class UserHistory : BaseActivity() {
 
 
         toggleGroup = findViewById(R.id.toggleGroup)
-        // Set initial style
-        updateButtonStyles(true)
+        if (isStudent) {
+            toggleGroup.visibility = View.GONE
+            // Ensure Gate Pass button styling is active if it ever becomes visible somehow
+            updateButtonStyles(false) 
+        } else {
+            // Set initial style
+            updateButtonStyles(true)
+        }
 
         toggleGroup.addOnButtonCheckedListener { group, checkedId, isChecked ->
             if (isChecked) {
@@ -209,7 +233,9 @@ class UserHistory : BaseActivity() {
         var clearButton = findViewById<Button>(R.id.clearButton)
 
         applyButton.setOnClickListener {
-            getVisitorList(fromTimeStamp, toTimeStamp)
+            if (!isStudent) {
+                getVisitorList(fromTimeStamp, toTimeStamp)
+            }
             getGatePassList(fromTimeStamp, toTimeStamp)
 
             //clear the search bar

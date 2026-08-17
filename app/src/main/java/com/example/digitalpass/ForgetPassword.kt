@@ -2,30 +2,24 @@ package com.example.digitalpass
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
-import android.widget.Button
-import android.widget.TextView
+import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.launch
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import androidx.compose.runtime.*
 import androidx.credentials.CreatePasswordRequest
-import androidx.credentials.CreateCredentialRequest
-import androidx.credentials.exceptions.CreateCredentialException
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
-import kotlinx.coroutines.CoroutineScope
+import com.example.digitalpass.ui.ForgetPasswordScreen
+import com.example.digitalpass.ui.ResetPasswordStep
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.ResponseBody
-import retrofit2.Response
 import retrofit2.Call
 import retrofit2.Callback
+import retrofit2.Response
 
 class ForgetPassword : AppCompatActivity() {
 
@@ -34,247 +28,173 @@ class ForgetPassword : AppCompatActivity() {
         newConfig.fontScale = 1.0f
         super.attachBaseContext(newBase.createConfigurationContext(newConfig))
     }
-    private lateinit var updateText: TextView
-    private lateinit var emailTextInputLayout: TextInputLayout
-    private lateinit var email: TextInputEditText
-    private lateinit var confirmPassword: TextInputEditText
-    private lateinit var doneButton: Button
 
-    private var emailText=""
-    private var verificationCode=""
-    lateinit var countDownOrResend:TextView
+    private val currentStepState = mutableStateOf(ResetPasswordStep.ENTER_EMAIL)
+    private val emailState = mutableStateOf("")
+    private val countdownTextState = mutableStateOf("")
+    private val canResendState = mutableStateOf(false)
+    private val isLoadingState = mutableStateOf(false)
+
+    private var verificationCode = ""
     private var countJob: Job? = null
-
-    private lateinit var progressBar:CustomProgressBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_forget_password)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
 
-            // 1. Get the Keyboard (IME) insets
-            val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
+        setContent {
+            val step by currentStepState
+            val emailVal by emailState
+            val countdownText by countdownTextState
+            val canResend by canResendState
+            val loading by isLoadingState
 
-            // 2. Calculate the bottom padding.
-            // It should be the height of the keyboard OR the system navigation bar, whichever is larger.
-            val bottomPadding = if (imeInsets.bottom > 0) imeInsets.bottom else systemBars.bottom
-
-            v.setPadding(
-                systemBars.left,
-                systemBars.top,
-                systemBars.right,
-                bottomPadding
+            ForgetPasswordScreen(
+                currentStep = step,
+                emailValue = emailVal,
+                countdownText = countdownText,
+                canResend = canResend,
+                isLoading = loading,
+                onBack = { finish() },
+                onSendCode = { emailInput ->
+                    if (emailInput.trim().isEmpty()) {
+                        Toast.makeText(this@ForgetPassword, "Please enter your email", Toast.LENGTH_SHORT).show()
+                    } else {
+                        emailState.value = emailInput.trim()
+                        sendVerificationCode(emailInput.trim())
+                    }
+                },
+                onVerifyCode = { code ->
+                    if (code.trim().isEmpty()) {
+                        Toast.makeText(this@ForgetPassword, "Please enter the verification code", Toast.LENGTH_SHORT).show()
+                    } else {
+                        verificationCode = code.trim()
+                        verifyVerificationCode(code.trim())
+                    }
+                },
+                onResetPassword = { newPass, confirmPass ->
+                    if (newPass.isEmpty() || confirmPass.isEmpty()) {
+                        Toast.makeText(this@ForgetPassword, "Please fill both password fields", Toast.LENGTH_SHORT).show()
+                    } else if (newPass != confirmPass) {
+                        Toast.makeText(this@ForgetPassword, "Passwords do not match", Toast.LENGTH_SHORT).show()
+                    } else {
+                        updatePassword(newPass)
+                    }
+                },
+                onResendClick = {
+                    sendVerificationCode(emailState.value)
+                }
             )
-
-            insets
-        }
-
-        progressBar=findViewById(R.id.customProgressBar)
-
-        updateText = findViewById(R.id.textViewForUpdates)
-        emailTextInputLayout = findViewById(R.id.emailInputLayout)
-        email = findViewById(R.id.emailToForgetPassword)
-        confirmPassword = findViewById(R.id.confirmPassword)
-        doneButton = findViewById(R.id.doneButton)
-        countDownOrResend=findViewById(R.id.countDownOrResendVerificationCode)
-
-
-
-        doneButton.setOnClickListener {
-            if(email.text.toString().trim()==""){
-                Toast.makeText(this, "Please enter your email", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            else {
-
-                emailText = email.text.toString()
-                sendVerificationCode()
-            }
         }
     }
 
-    private fun sendVerificationCode(){
-
-        progressBar.startProgressBar()
-        doneButton.isEnabled=false
-
-        //send verification code to the email
-        var callToSendVerificationCode= RetrofitClient.instance.sendVerificationCode(emailText)
-        callToSendVerificationCode.enqueue(object: Callback<ResponseBody> {
-            override fun onResponse(
-                call: Call<ResponseBody?>,
-                response: Response<ResponseBody?>
-            ) {
-                if(response.isSuccessful){
-                    //set visibility of countDownOrResend to visible, also remove setOnClickListener
-                    countDownOrResend.visibility= View.VISIBLE
-                    countDownOrResend.setOnClickListener(null)
-                    if(countJob!=null)countJob?.cancel()
-
-                    //start the count down of 2 minutes by using lifecycleScope
-                    countJob=lifecycleScope.launch {
-                        for(i in 120 downTo 0){
-                            countDownOrResend.text="Resend in 0${i/60}:${if(i%60<10) "0${i%60}" else i%60}"
-                            delay(1000)
-                        }
-                        countDownOrResend.text="Resend code"
-                        countDownOrResend.setOnClickListener {
-                            sendVerificationCode()
-                        }
-                    }
-
-
-                    email.text?.clear()
-                    emailTextInputLayout.hint="Enter verification code"
-                    //give the update to user that verification code has been sent on your email
-                    updateText.text="Verification code has been sent to $emailText"
-                    doneButton.text="Verify"
-
-                    //set the click listener to verify code
-                    doneButton.setOnClickListener {
-                        if(email.text.toString()==""){
-                            Toast.makeText(this@ForgetPassword,"Please enter the verification code",Toast.LENGTH_SHORT).show()
-                            return@setOnClickListener
-                        }
-                        verifyVerificationCode()
-                    }
+    private fun sendVerificationCode(emailText: String) {
+        isLoadingState.value = true
+        val call = RetrofitClient.instance.sendVerificationCode(emailText)
+        call.enqueue(object : Callback<ResponseBody> {
+            override fun onResponse(call: Call<ResponseBody?>, response: Response<ResponseBody?>) {
+                isLoadingState.value = false
+                if (response.isSuccessful) {
+                    currentStepState.value = ResetPasswordStep.VERIFY_OTP
+                    startCountdownTimer()
+                } else {
+                    Toast.makeText(this@ForgetPassword, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_SHORT).show()
                 }
-                else Toast.makeText(this@ForgetPassword, LoginUserDataHolder.getErrorMessage(response),Toast.LENGTH_SHORT).show()
-
-                progressBar.stopAnimation()
-                doneButton.isEnabled=true
             }
-            override fun onFailure(
-                call: Call<ResponseBody?>,
-                t: Throwable
-            ) {
-                progressBar.stopAnimation()
-                doneButton.isEnabled=true
-                Toast.makeText(this@ForgetPassword,"Something is went wrong",Toast.LENGTH_SHORT).show()
+
+            override fun onFailure(call: Call<ResponseBody?>, t: Throwable) {
+                isLoadingState.value = false
+                Toast.makeText(this@ForgetPassword, "Connection error. Please try again.", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
-    private fun verifyVerificationCode(){
-        progressBar.startProgressBar()
-        doneButton.isEnabled=false
-        verificationCode=email.text.toString()
-        //verify the verification code
-        var callToVerifyVerificationCode= RetrofitClient.instance.verifyVerificationCode(hashMapOf(
-            "email" to emailText,
-            "verificationCode" to verificationCode
-        ))
+    private fun startCountdownTimer() {
+        countJob?.cancel()
+        canResendState.value = false
+        countJob = lifecycleScope.launch {
+            for (i in 120 downTo 0) {
+                val mins = i / 60
+                val secs = i % 60
+                countdownTextState.value = "Resend code in 0$mins:${if (secs < 10) "0$secs" else "$secs"}"
+                delay(1000)
+            }
+            countdownTextState.value = "Resend code"
+            canResendState.value = true
+        }
+    }
 
-        callToVerifyVerificationCode.enqueue(object: Callback<ResponseBody>{
-            override fun onResponse(
-                call: Call<ResponseBody?>,
-                response: Response<ResponseBody?>
-            ) {
-                if(response.isSuccessful){
-                    //set the visibility of countDownOrResend to gone
-                    countDownOrResend.visibility=View.GONE
+    private fun verifyVerificationCode(code: String) {
+        isLoadingState.value = true
+        val call = RetrofitClient.instance.verifyVerificationCode(
+            hashMapOf(
+                "email" to emailState.value,
+                "verificationCode" to code
+            )
+        )
+
+        call.enqueue(object : Callback<ResponseBody> {
+            override fun onResponse(call: Call<ResponseBody?>, response: Response<ResponseBody?>) {
+                isLoadingState.value = false
+                if (response.isSuccessful) {
                     countJob?.cancel()
-                    updateText.text="Create new password for your account $emailText"
-                    emailTextInputLayout.hint="Enter new password"
-                    email.text?.clear()
-
-                    //set the input type of email as textPassword and enable password toggle
-                    email.inputType=129
-                    emailTextInputLayout.endIconMode=TextInputLayout.END_ICON_PASSWORD_TOGGLE
-
-                    findViewById<TextInputLayout>(R.id.ConfirmPasswordInputLayout).visibility= View.VISIBLE
-
-                    doneButton.text="Update"
-                    //set the click listener to update password
-                    doneButton.setOnClickListener {
-                        if(email.text.toString()==""||confirmPassword.text.toString()==""){
-                            Toast.makeText(this@ForgetPassword,"Please enter the new password",Toast.LENGTH_SHORT).show()
-                            return@setOnClickListener
-                        }
-                        if(email.text.toString()!=confirmPassword.text.toString()){
-                            Toast.makeText(this@ForgetPassword,"Password does not match",Toast.LENGTH_SHORT).show()
-                            return@setOnClickListener
-                        }
-                        updatePassword(confirmPassword.text.toString())
-                    }
+                    currentStepState.value = ResetPasswordStep.RESET_PASSWORD
+                } else {
+                    Toast.makeText(this@ForgetPassword, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_SHORT).show()
                 }
-                else Toast.makeText(this@ForgetPassword, LoginUserDataHolder.getErrorMessage(response),Toast.LENGTH_SHORT).show()
-
-                progressBar.stopAnimation()
-                doneButton.isEnabled=true
             }
 
-            override fun onFailure(
-                call: Call<ResponseBody?>,
-                t: Throwable
-            ) {
-                progressBar.stopAnimation()
-                doneButton.isEnabled=true
-                Toast.makeText(this@ForgetPassword,"Something is went wrong",Toast.LENGTH_SHORT).show()
+            override fun onFailure(call: Call<ResponseBody?>, t: Throwable) {
+                isLoadingState.value = false
+                Toast.makeText(this@ForgetPassword, "Connection error. Please try again.", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
-    private fun updatePassword(newPassword:String){
-        progressBar.startProgressBar()
-        doneButton.isEnabled=false
-        //call to update password
-        var callToUpdatePassword= RetrofitClient.instance.updatePassword(hashMapOf(
-            "email" to emailText,
-            "verificationCode" to verificationCode,
-            "newPassword" to newPassword
-        ))
+    private fun updatePassword(newPassword: String) {
+        isLoadingState.value = true
+        val call = RetrofitClient.instance.updatePassword(
+            hashMapOf(
+                "email" to emailState.value,
+                "verificationCode" to verificationCode,
+                "newPassword" to newPassword
+            )
+        )
 
-        callToUpdatePassword.enqueue(object:Callback<String>{
-            override fun onResponse(
-                call: Call<String?>,
-                response: Response<String?>
-            ) {
-                if(response.isSuccessful){
-                    Toast.makeText(this@ForgetPassword,"Password updated successfully",Toast.LENGTH_SHORT).show()
-                    //here we receive the token from the server and we have to store it in shared preferences
-                    var token=response.body()
-                    if(token!=null){
-                        getSharedPreferences("DigitalPassPrefs", MODE_PRIVATE).edit().putString("token",token).apply()
-
-                        //store fcm token
+        call.enqueue(object : Callback<String> {
+            override fun onResponse(call: Call<String?>, response: Response<String?>) {
+                isLoadingState.value = false
+                if (response.isSuccessful) {
+                    Toast.makeText(this@ForgetPassword, "Password updated successfully", Toast.LENGTH_SHORT).show()
+                    val token = response.body()
+                    if (token != null) {
+                        getSharedPreferences("DigitalPassPrefs", MODE_PRIVATE).edit().putString("token", token).apply()
                         LoginUserDataHolder.storeFCMToken()
 
-                        //also we have to set or update this password with email in google credential
+                        val credentialManager = androidx.credentials.CredentialManager.create(this@ForgetPassword)
+                        val passwordRequest = CreatePasswordRequest(emailState.value, newPassword)
 
-                        val credentialManager=androidx.credentials.CredentialManager.create(this@ForgetPassword)
-                        // Create the password request
-                        val passwordRequest = CreatePasswordRequest(emailText, newPassword)
-
-                        CoroutineScope(Dispatchers.Main).launch {
+                        lifecycleScope.launch(Dispatchers.Main) {
                             try {
                                 credentialManager.createCredential(this@ForgetPassword, passwordRequest)
-                                Toast.makeText(this@ForgetPassword, "Credential saved", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                // Credential Manager UI not available on this device (e.g. ActivityNotFoundException
-                                // on devices without full Google Play Services) — silently skip, still navigate.
-                                android.util.Log.w("ForgetPassword", "Credential save skipped: ${e.message}")
+                                Log.w("ForgetPassword", "Credential save skipped: ${e.message}")
                             }
 
-                            // Always navigate to splash/login regardless of credential save result
                             val intent = Intent(this@ForgetPassword, splashScreen::class.java)
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                             startActivity(intent)
                             finish()
                         }
                     }
+                } else {
+                    Toast.makeText(this@ForgetPassword, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_SHORT).show()
                 }
-                else Toast.makeText(this@ForgetPassword, LoginUserDataHolder.getErrorMessage(response),Toast.LENGTH_SHORT).show()
-                progressBar.stopAnimation()
-                doneButton.isEnabled=true
             }
 
             override fun onFailure(call: Call<String?>, t: Throwable) {
-                progressBar.stopAnimation()
-                doneButton.isEnabled=true
-                Toast.makeText(this@ForgetPassword,"Something went wrong",Toast.LENGTH_SHORT).show()
+                isLoadingState.value = false
+                Toast.makeText(this@ForgetPassword, "Something went wrong", Toast.LENGTH_SHORT).show()
             }
         })
     }

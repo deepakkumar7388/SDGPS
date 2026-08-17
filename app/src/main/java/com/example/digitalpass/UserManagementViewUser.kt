@@ -1,26 +1,12 @@
 package com.example.digitalpass
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.Spinner
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
-import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.card.MaterialCardView
-import com.google.android.material.textfield.TextInputLayout
+import androidx.compose.runtime.*
+import com.example.digitalpass.ui.UserManagementViewUserScreen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,441 +17,109 @@ import retrofit2.Response
 
 class UserManagementViewUser : BaseActivity() {
 
-    private lateinit var img: ImageView
-    private lateinit var name: EditText
-    private lateinit var email: EditText
-    private lateinit var phone: EditText
-    private lateinit var campusSpinner: Spinner
-    private lateinit var departmentSpinner: Spinner
-    private lateinit var roleSpinner: Spinner
-    private lateinit var batchSpinner: Spinner
-    private lateinit var uid: EditText
-    private lateinit var fatherName: EditText
-    private lateinit var fatherPhone: EditText
-    private lateinit var doneButton: Button
-    private lateinit var editButton: ImageView
-    private lateinit var user: HashMap<String, String>
-    var clickability=false
-
-    private var progressBar: CustomProgressBar?=null
+    private val userState = mutableStateOf<Map<String, String>>(emptyMap())
+    private val isEditModeState = mutableStateOf(false)
+    private val isLoadingState = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_user_management_view_user)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
 
-            // 1. Get the Keyboard (IME) insets
-            val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
+        @Suppress("UNCHECKED_CAST")
+        val initialUser = (intent.getSerializableExtra("user") as? HashMap<String, String>) ?: hashMapOf()
+        userState.value = initialUser
 
-            // 2. Calculate the bottom padding.
-            // It should be the height of the keyboard OR the system navigation bar, whichever is larger.
-            val bottomPadding = if (imeInsets.bottom > 0) imeInsets.bottom else systemBars.bottom
+        setContent {
+            val user by userState
+            val isEditMode by isEditModeState
+            val isLoading by isLoadingState
 
-            v.setPadding(
-                systemBars.left,
-                systemBars.top,
-                systemBars.right,
-                bottomPadding
+            UserManagementViewUserScreen(
+                user = user,
+                isLoading = isLoading,
+                isEditMode = isEditMode,
+                onBack = { finish() },
+                onToggleEditMode = { isEditModeState.value = !isEditModeState.value },
+                onSaveEdit = { updatedFields -> saveUserEdits(updatedFields) },
+                onRemoveUser = { removeUser() }
             )
-
-            insets
         }
-
-        findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener {
-            finish()
-        }
-
-        progressBar=findViewById(R.id.customProgressBar)
-
-        img = findViewById(R.id.userManagementViewUserImg)
-        name = findViewById(R.id.newUserName)
-        email = findViewById(R.id.newUserEmail)
-        phone = findViewById(R.id.phone)
-        campusSpinner = findViewById(R.id.campusSpinner)
-        departmentSpinner = findViewById(R.id.departmentSpinner)
-        roleSpinner = findViewById(R.id.roleSpinner)
-        batchSpinner = findViewById(R.id.batchSpinner)
-        uid = findViewById(R.id.UID)
-        fatherName = findViewById(R.id.fatherName)
-        fatherPhone = findViewById(R.id.fatherPhone)
-        doneButton = findViewById(R.id.add)
-        editButton = findViewById(R.id.editEnableButton)
-
-
-        setupUser()
-        setupEnableOfAllView(clickability)
-        editButton.setOnClickListener {
-            clickability=!clickability
-            setupEnableOfAllView(clickability)
-            //set the visibility of edit button gone
-            editButton.visibility=View.GONE
-            doneButton.text="Done"
-        }
-
-        doneButton.setOnClickListener {
-            if(doneButton.text=="Done")editUser()
-            else removeUser()
-        }
-
-    }
-
-    private fun setupUser() {
-        user = intent.getSerializableExtra("user") as HashMap<String, String>
-
-        //setup common things of user
-        if (user["img"]?.trim() != "") {
-            Glide.with(this).load(LoginUserDataHolder.getURL(user["img"])).into(img)
-            img.setOnClickListener {
-                CommonOperation.showFullScreenImage(this, user["img"])
-            }
-        }
-        name.setText(user["name"])
-        email.setText(user["email"])
-        phone.setText(user["phone"])
-        batchSpinner.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_item,arrayOf(user["batch"]))
-
-        //setup visibility of fields
-        if(LoginUserDataHolder.loginUserData?.get("role") =="admin")
-            campusSpinner.visibility = Spinner.VISIBLE
-
-
-        //if user is student
-        if(user["role"]=="student") {
-            uid.visibility = EditText.VISIBLE
-            fatherName.visibility = EditText.VISIBLE
-            fatherPhone.visibility = EditText.VISIBLE
-            uid.setText(user["uid"])
-            fatherName.setText(user["fathername"])
-            fatherPhone.setText(user["fatherphone"])
-        }
-
-        fetchCampus()
-
-
-
-        setupSpinnerListeners()
-
-
-    }
-
-
-    private fun fetchCampus() {
-        progressBar?.startProgressBar()
-        
-        userOperationViewModel.campuses.removeObservers(this)
-        userOperationViewModel.campuses.observe(this) { result ->
-            result.onSuccess { campusList ->
-                val campuses = ArrayList(campusList)
-                campuses.add(0, "Select Campus")
-                campusSpinner.adapter = ArrayAdapter(this@UserManagementViewUser, android.R.layout.simple_spinner_item, campuses)
-                
-                if(LoginUserDataHolder.loginUserData?.get("role") =="admin"){
-                    val campusIndex = campuses.indexOf(user["campus"])
-                    if(campusIndex >= 0) campusSpinner.setSelection(campusIndex)
-                }
-                
-                fetchDepartments()
-            }.onFailure {
-                progressBar?.stopAnimation()
-                Toast.makeText(this@UserManagementViewUser, it.message ?: "Failed to load campuses", Toast.LENGTH_SHORT).show()
-            }
-            userOperationViewModel.campuses.removeObservers(this)
-        }
-        
-        userOperationViewModel.fetchCampuses(LoginUserDataHolder.token)
-    }
-
-    private fun fetchDepartments() {
-        userOperationViewModel.departments.removeObservers(this)
-        userOperationViewModel.departments.observe(this) { result ->
-            result.onSuccess { departmentList ->
-                val departments = ArrayList(departmentList)
-                departments.add(0, "Select Department")
-                departmentSpinner.adapter = ArrayAdapter(this@UserManagementViewUser, android.R.layout.simple_spinner_item, departments)
-                
-                val deptIndex = departments.indexOf(user["department"])
-                if(deptIndex >= 0) departmentSpinner.setSelection(deptIndex)
-                
-                fetchRole()
-            }.onFailure {
-                progressBar?.stopAnimation()
-                Toast.makeText(this@UserManagementViewUser, it.message ?: "Failed to load departments", Toast.LENGTH_SHORT).show()
-            }
-            userOperationViewModel.departments.removeObservers(this)
-        }
-        
-        userOperationViewModel.fetchDepartments(LoginUserDataHolder.token, "userManagement")
-    }
-
-
-    private fun setupSpinnerListeners() {
-        departmentSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (position > 0) {
-                    fetchRole()
-                } else {
-                    roleSpinner.adapter = null
-                    batchSpinner.adapter = null
-                    setStudentFieldsVisibility(View.GONE)
-                }
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-
-        roleSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (position > 0) {
-                    if(LoginUserDataHolder.loginUserData?.get("role")=="admin") {
-                        if (campusSpinner.selectedItemPosition == 0 || departmentSpinner.selectedItemPosition == 0) {
-                            roleSpinner.setSelection(0)
-                            Toast.makeText(
-                                this@UserManagementViewUser,
-                                "Please select campus and department first",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            return
-                        }
-                    }
-                    else if (departmentSpinner.selectedItemPosition == 0) {
-                        roleSpinner.setSelection(0)
-                        Toast.makeText(
-                            this@UserManagementViewUser,
-                            "Please select department first",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        return
-
-                    }
-
-
-                    val selectedRole = roleSpinner.selectedItem.toString().trim()
-                    if (selectedRole.equals("student", ignoreCase = true)) {
-                        fetchBatchesBasedOnDepartment()
-                        setStudentFieldsVisibility(View.VISIBLE)
-                    } else {
-                        setStudentFieldsVisibility(View.GONE)
-                    }
-
-                } else {
-                    setStudentFieldsVisibility(View.GONE)
-                    batchSpinner.adapter = null
-                }
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-    }
-
-    private fun fetchRole() {
-        progressBar?.startProgressBar()
-        CoroutineScope(Dispatchers.IO).launch {
-            val call = RetrofitClient.instance.getRoleBasedOnDepartment(hashMapOf(
-                "department" to departmentSpinner.selectedItem.toString(),
-                "token" to LoginUserDataHolder.token
-            ))
-            call.enqueue(object : Callback<ArrayList<String>> {
-                override fun onResponse(
-                    call: Call<ArrayList<String>?>, response: Response<ArrayList<String>?>
-                ) {
-                    progressBar?.stopAnimation()
-                    if (response.isSuccessful) {
-                        val roleList = response.body() ?: arrayListOf()
-                        roleList.add(0, "Select Role")
-                        roleSpinner.adapter = ArrayAdapter(this@UserManagementViewUser, android.R.layout.simple_spinner_item, roleList)
-
-                        //find position of users role and then set it
-                        var position=roleList.indexOf(user["role"])
-                        if(position==-1)position=0
-                        roleSpinner.setSelection(position)
-                        //if user is student then we will fetch the batches
-                        if(roleSpinner.selectedItem.toString()=="student")fetchBatchesBasedOnDepartment()
-                        else setStudentFieldsVisibility(View.GONE)
-                    } else {
-                        val errorMessage = LoginUserDataHolder.getErrorMessage(response)
-                        Toast.makeText(this@UserManagementViewUser, errorMessage, Toast.LENGTH_LONG).show()
-                    }
-                }
-
-                override fun onFailure(call: Call<ArrayList<String>?>, t: Throwable) {
-                    Toast.makeText(this@UserManagementViewUser, "Something went wrong: ${t.message}", Toast.LENGTH_SHORT).show()
-                }
-            })
-        }
-    }
-
-
-    private fun fetchBatchesBasedOnDepartment() {
-        progressBar?.startProgressBar()
-        CoroutineScope(Dispatchers.IO).launch {
-            var hashForBatch=hashMapOf(
-                "department" to departmentSpinner.selectedItem.toString(),
-                "role" to roleSpinner.selectedItem.toString(),
-                "token" to LoginUserDataHolder.token
-            )
-            if(LoginUserDataHolder.loginUserData?.get("role")=="admin")hashForBatch.put("campus",campusSpinner.selectedItem.toString())
-
-            val call = RetrofitClient.instance.getBatchesBasedOnDepartment(hashForBatch)
-
-            call.enqueue(object : Callback<ArrayList<String>> {
-                override fun onResponse(
-                    call: Call<ArrayList<String>?>, response: Response<ArrayList<String>?>
-                ) {
-                    progressBar?.stopAnimation()
-                    if (response.isSuccessful) {
-                        val batchList = response.body() ?: arrayListOf()
-                        batchList.add(0, "Select Batch")
-                        batchSpinner.adapter = ArrayAdapter(this@UserManagementViewUser, android.R.layout.simple_spinner_item, batchList)
-                        var position=batchList.indexOf(user["batch"])
-                        if(position==-1)position=0
-                        batchSpinner.setSelection(position)
-                    } else {
-                        val errorMessage = LoginUserDataHolder.getErrorMessage(response)
-                        Toast.makeText(this@UserManagementViewUser, errorMessage, Toast.LENGTH_SHORT).show()
-                    }
-                }
-
-                override fun onFailure(call: Call<ArrayList<String>?>, t: Throwable) {
-                    Toast.makeText(this@UserManagementViewUser, "Something went wrong: ${t.message}", Toast.LENGTH_SHORT).show()
-                }
-            })
-        }
-    }
-
-    private fun setStudentFieldsVisibility(visibility: Int) {
-        findViewById<MaterialCardView>(R.id.guardianInfoCard).visibility = visibility
-        batchSpinner.visibility = visibility
-    }
-
-    private fun setupEnableOfAllView(clickability: Boolean) {
-        name.isEnabled = clickability
-        email.isEnabled = clickability
-        phone.isEnabled = clickability
-        campusSpinner.isEnabled = clickability
-        departmentSpinner.isEnabled = clickability
-        roleSpinner.isEnabled = clickability
-        batchSpinner.isEnabled = clickability
-        uid.isEnabled = clickability
-        fatherName.isEnabled = clickability
-        fatherPhone.isEnabled = clickability
     }
 
     private fun removeUser() {
+        val email = userState.value["email"] ?: return
+        isLoadingState.value = true
 
-        progressBar?.startProgressBar()
-        doneButton.isEnabled=false
-        var hashMap=HashMap<String,Any>()
-        hashMap.put("removeEmails",listOf(user["email"]?:return))
-        hashMap.put("token",LoginUserDataHolder.token)
+        val hashMap = HashMap<String, Any>().apply {
+            put("removeEmails", listOf(email))
+            put("token", LoginUserDataHolder.token)
+        }
+
         CoroutineScope(Dispatchers.IO).launch {
             val call = RetrofitClient.instance.removeUser(hashMap)
             call.enqueue(object : Callback<ResponseBody> {
-                override fun onResponse(
-                    call: Call<ResponseBody?>,
-                    response: Response<ResponseBody?>
-                ) {
-                    progressBar?.stopAnimation()
-                    doneButton.isEnabled=true
+                override fun onResponse(call: Call<ResponseBody?>, response: Response<ResponseBody?>) {
+                    isLoadingState.value = false
                     if (response.isSuccessful) {
                         Toast.makeText(this@UserManagementViewUser, "User removed successfully", Toast.LENGTH_SHORT).show()
-
-                        var resultIntent=Intent().apply{
-                            putExtra("userManagementOperation","remove")
-                            putExtra("previousEmail",user["email"])
+                        val resultIntent = Intent().apply {
+                            putExtra("userManagementOperation", "remove")
+                            putExtra("previousEmail", email)
                         }
-                        setResult(RESULT_OK,resultIntent)
+                        setResult(RESULT_OK, resultIntent)
                         finish()
-                    }
-                    else{
-                        val errorMessage = LoginUserDataHolder.getErrorMessage(response)
-                        Toast.makeText(this@UserManagementViewUser, errorMessage, Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@UserManagementViewUser, LoginUserDataHolder.getErrorMessage(response), Toast.LENGTH_SHORT).show()
                     }
                 }
 
-                override fun onFailure(
-                    call: Call<ResponseBody?>,
-                    t: Throwable
-                ) {
-                    progressBar?.stopAnimation()
-                    doneButton.isEnabled=true
-                    Toast.makeText(this@UserManagementViewUser, "Something went wrong: ${t.message}", Toast.LENGTH_SHORT).show()
+                override fun onFailure(call: Call<ResponseBody?>, t: Throwable) {
+                    isLoadingState.value = false
+                    Toast.makeText(this@UserManagementViewUser, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
                 }
             })
-
-
         }
     }
 
-    private fun editUser() {
-// Validation
-        if(LoginUserDataHolder.loginUserData?.get("role")=="admin"&&campusSpinner.selectedItemPosition==0){
-            Toast.makeText(this, "Please select campus", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (name.text.isBlank() || email.text.isBlank() || phone.text.isBlank()|| departmentSpinner.selectedItemPosition == 0 || roleSpinner.selectedItemPosition == 0) {
-            Toast.makeText(this, "Please fill all required fields", Toast.LENGTH_SHORT).show()
-            return
-        }
+    private fun saveUserEdits(updatedFields: Map<String, String>) {
+        val currentUser = HashMap(userState.value)
+        val previousEmail = currentUser["email"] ?: ""
 
-        if(roleSpinner.selectedItem.toString().equals("student",ignoreCase = true)) {
-            if(uid.text.isBlank() || fatherName.text.isBlank() || fatherPhone.text.isBlank()|| batchSpinner.selectedItemPosition==0){
-                Toast.makeText(this, "Please fill all fields for the student role", Toast.LENGTH_SHORT).show()
-                return
-            }
-        }
-
-        progressBar?.startProgressBar()
-        doneButton.isEnabled=false
-
-        var newUser=hashMapOf(
-            "previousEmail" to user["email"],
-            "name" to name.text.toString(),
-            "email" to email.text.toString(),
-            "phone" to phone.text.toString(),
-            "department" to departmentSpinner.selectedItem.toString(),
-            "role" to roleSpinner.selectedItem.toString(),
+        val newUser = hashMapOf(
+            "previousEmail" to previousEmail,
+            "name" to (updatedFields["name"] ?: currentUser["name"] ?: ""),
+            "email" to (updatedFields["email"] ?: currentUser["email"] ?: ""),
+            "phone" to (updatedFields["phone"] ?: currentUser["phone"] ?: ""),
+            "department" to (updatedFields["department"] ?: currentUser["department"] ?: ""),
+            "role" to (updatedFields["role"] ?: currentUser["role"] ?: ""),
             "token" to LoginUserDataHolder.token
         )
 
-        if(roleSpinner.selectedItem.toString().equals("student",ignoreCase = true)) {
-            newUser.put("uid",uid.text.toString())
-            newUser.put("fathername",fatherName.text.toString())
-            newUser.put("fatherphone",fatherPhone.text.toString())
-            newUser.put("batch",batchSpinner.selectedItem.toString())
+        if ((newUser["role"] ?: "").equals("student", ignoreCase = true)) {
+            newUser["uid"] = updatedFields["uid"] ?: currentUser["uid"] ?: ""
+            newUser["fathername"] = updatedFields["fathername"] ?: currentUser["fathername"] ?: ""
+            newUser["fatherphone"] = updatedFields["fatherphone"] ?: currentUser["fatherphone"] ?: ""
+            newUser["batch"] = updatedFields["batch"] ?: currentUser["batch"] ?: ""
         }
-        if(LoginUserDataHolder.loginUserData?.get("role")=="admin")newUser.put("campus",campusSpinner.selectedItem.toString())
 
-        // API Call
+        isLoadingState.value = true
+
         CoroutineScope(Dispatchers.IO).launch {
             val call = RetrofitClient.instance.editUser(newUser as HashMap<String, String>)
             call.enqueue(object : Callback<ResponseBody> {
                 override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
-                    progressBar?.stopAnimation()
-                    doneButton.isEnabled=true
+                    isLoadingState.value = false
                     if (response.isSuccessful) {
                         runOnUiThread {
                             Toast.makeText(this@UserManagementViewUser, "User edited successfully", Toast.LENGTH_SHORT).show()
-
-                            //put new updated data in user
-                            var previousEmail=user["email"]
-
-                            user["name"]=name.text.toString()
-                            user["email"]=email.text.toString()
-                            user["phone"]=phone.text.toString()
-                            user["department"]=departmentSpinner.selectedItem.toString()
-                            user["role"]=roleSpinner.selectedItem.toString()
-
-                            user["uid"]=uid.text.toString()
-                            user["fathername"]=fatherName.text.toString()
-                            user["fatherphone"]=fatherPhone.text.toString()
-                            user["batch"]=batchSpinner.selectedItem.toString()
-                            var resultIntent=Intent().apply{
-                                putExtra("userManagementOperation","edit")
-                                putExtra("previousEmail",previousEmail)
-                                putExtra("userUpdatedData",user)
+                            currentUser.putAll(newUser)
+                            val resultIntent = Intent().apply {
+                                putExtra("userManagementOperation", "edit")
+                                putExtra("previousEmail", previousEmail)
+                                putExtra("userUpdatedData", currentUser)
                             }
-                            setResult(RESULT_OK,resultIntent)
-                            finish() // Close activity on success
+                            setResult(RESULT_OK, resultIntent)
+                            finish()
                         }
                     } else {
                         runOnUiThread {
@@ -475,8 +129,7 @@ class UserManagementViewUser : BaseActivity() {
                 }
 
                 override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                    progressBar?.stopAnimation()
-                    doneButton.isEnabled=true
+                    isLoadingState.value = false
                     runOnUiThread {
                         Toast.makeText(this@UserManagementViewUser, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
                     }
@@ -484,5 +137,4 @@ class UserManagementViewUser : BaseActivity() {
             })
         }
     }
-
 }

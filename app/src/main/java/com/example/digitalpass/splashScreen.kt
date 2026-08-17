@@ -103,36 +103,38 @@ class splashScreen : AppCompatActivity() {
             .setInterpolator(OvershootInterpolator(2.0f))
             .start()
 
-        // Total delay before session check to allow animations to be fully appreciated
+        // Quick 1.1s smooth entry - then proceed immediately
         Handler(Looper.getMainLooper()).postDelayed({
             checkSession()
-        }, 3200)
+        }, 1100)
     }
 
     private fun checkSession() {
-        val sharedPreferences = getSharedPreferences("DigitalPassPrefs", Context.MODE_PRIVATE)
-        val token = sharedPreferences.getString("token", null)
+        val hasSession = LoginUserDataHolder.loadState(this)
+        val role = LoginUserDataHolder.loginUserData?.get("role")
+        val token = LoginUserDataHolder.token
 
-        if (token != null) {
-            val loginWithToken = RetrofitClient.instance.loginUser(LoginData("", token))
-            loginWithToken.enqueue(object : Callback<HashMap<String, String>> {
+        if (hasSession && token.isNotEmpty() && !role.isNullOrBlank()) {
+            // User is already logged in locally! Open dashboard immediately (0 lag)
+            navigateToDashboard(role)
+
+            // Sync/verify token in background asynchronously without blocking UI
+            RetrofitClient.instance.loginUser(LoginData("", token)).enqueue(object : Callback<HashMap<String, String>> {
                 override fun onResponse(call: Call<HashMap<String, String>?>, response: Response<HashMap<String, String>?>) {
                     if (response.isSuccessful) {
-                        val responseBody = response.body()
-                        LoginUserDataHolder.loginUserData = responseBody
-                        LoginUserDataHolder.token = token
-                        // Persist full user state so it survives process death
-                        LoginUserDataHolder.saveState(this@splashScreen)
-                        navigateToDashboard(responseBody!!["role"])
-                    } else {
-                        navigateToLogin()
+                        response.body()?.let {
+                            LoginUserDataHolder.loginUserData = it
+                            LoginUserDataHolder.token = token
+                            LoginUserDataHolder.saveState(this@splashScreen)
+                        }
                     }
                 }
                 override fun onFailure(call: Call<HashMap<String, String>?>, t: Throwable) {
-                    Toast.makeText(this@splashScreen, "Network error", Toast.LENGTH_SHORT).show()
+                    // Offline or server asleep, user continues working seamlessly with local state
                 }
             })
         } else {
+            // No saved session, go directly to Login screen
             navigateToLogin()
         }
     }

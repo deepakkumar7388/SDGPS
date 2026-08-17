@@ -5,6 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 
 @Database(entities = [UserEntity::class, BatchEntity::class, NotificationEntity::class, CampusEntity::class, DepartmentEntity::class, GatePassEntity::class, VisitorEntity::class], version = 8, exportSchema = false)
 @TypeConverters(Converters::class)
@@ -29,6 +30,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "digitalpass_database"
                 )
+                .openHelperFactory(RequerySQLiteOpenHelperFactory())
                 .fallbackToDestructiveMigration()
                 // Explicitly enable WAL mode on all Android versions.
                 // This prevents older OS versions from locking the entire database

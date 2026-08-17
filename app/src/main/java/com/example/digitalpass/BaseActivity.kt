@@ -207,7 +207,18 @@ open class BaseActivity : AppCompatActivity() {
         userOperationViewModel.campuses.observe(this) { result ->
             progressBar?.stopAnimation()
             result.onSuccess { campuses ->
-                val campusArray = campuses.toTypedArray()
+                val currentCampus = LoginUserDataHolder.loginUserData?.get("campus")?.trim() ?: ""
+                val filteredCampuses = campuses.filter { campusName ->
+                    if (currentCampus.isEmpty()) true
+                    else {
+                        val cleanCurrent = currentCampus.lowercase().replace("-", " ").replace("sistec", "").trim()
+                        val cleanCampus = campusName.lowercase().replace("-", " ").replace("sistec", "").trim()
+                        !campusName.trim().equals(currentCampus, ignoreCase = true) &&
+                        !cleanCampus.contains(cleanCurrent) &&
+                        !cleanCurrent.contains(cleanCampus)
+                    }
+                }
+                val campusArray = (if (filteredCampuses.isNotEmpty()) filteredCampuses else campuses).toTypedArray()
                 MaterialAlertDialogBuilder(this)
                     .setTitle("Select Destination Campus")
                     .setItems(campusArray) { _, which ->

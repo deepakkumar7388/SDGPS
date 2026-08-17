@@ -127,6 +127,9 @@
             android:exported="false"
             android:screenOrientation="portrait" />
         <activity
+            android:name=".ProfileActivity"
+            android:exported="false" />
+        <activity
             android:name=".AddReportActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
@@ -134,10 +137,6 @@
             android:name=".NotificationsActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
-        <activity
-            android:name="com.canhub.cropper.CropImageActivity"
-            android:theme="@style/Base.Theme.AppCompat"
-            android:exported="true" />
         <activity
             android:name=".OnboardingActivity"
             android:exported="false"

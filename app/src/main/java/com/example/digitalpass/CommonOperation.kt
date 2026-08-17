@@ -44,12 +44,7 @@ object CommonOperation {
         //we will do all this work with CoroutineScope
         CoroutineScope(Dispatchers.Main).launch {
 
-            activity.findViewById<ImageView>(R.id.navProfileImage).setOnClickListener {
-                if (loginUserData?.get("img") != "") showFullScreenImage(
-                    activity as Context,
-                    loginUserData?.get("img")
-                )
-            }
+
             //show app update if available
             val serverVersion = loginUserData?.get("versionId")
             if(serverVersion != versionId){
@@ -129,10 +124,6 @@ object CommonOperation {
                 Glide.with(activity)
                     .load(LoginUserDataHolder.getURL(LoginUserDataHolder.loginUserData?.get("img")))
                     .into(profileImage)
-                var navProfileImage = activity.findViewById<ImageView>(R.id.navProfileImage)
-                Glide.with(activity)
-                    .load(LoginUserDataHolder.getURL(LoginUserDataHolder.loginUserData?.get("img")))
-                    .into(navProfileImage)
             }
 
             //Digital Pass+campus
@@ -150,66 +141,11 @@ object CommonOperation {
             )
 
             activity.findViewById<TextView>(R.id.toolbarTitle).text=spannableText
-
-            activity.findViewById<TextView>(R.id.profileName).text =LoginUserDataHolder.loginUserData?.get("name")
-            activity.findViewById<TextView>(R.id.profileRole).text =LoginUserDataHolder.loginUserData?.get("role")
-            activity.findViewById<TextView>(R.id.profileEmail).text =LoginUserDataHolder.loginUserData?.get("email")
-            activity.findViewById<TextView>(R.id.profilePhone).text =LoginUserDataHolder.loginUserData?.get("phone")
-            activity.findViewById<TextView>(R.id.profileCampus).text =LoginUserDataHolder.loginUserData?.get("campus")
-            activity.findViewById<TextView>(R.id.profileDepartment).text =LoginUserDataHolder.loginUserData?.get("department")
-            activity.findViewById<TextView>(R.id.profileBatch).text =LoginUserDataHolder.loginUserData?.get("batch")
-
-            if(LoginUserDataHolder.loginUserData?.get("role")=="student"){
-                activity.findViewById<LinearLayout>(R.id.studentLayout).visibility=LinearLayout.VISIBLE
-                activity.findViewById<TextView>(R.id.studentUid).text =LoginUserDataHolder.loginUserData?.get("uid")
-                activity.findViewById<TextView>(R.id.fatherName).text =LoginUserDataHolder.loginUserData?.get("fathername")
-                activity.findViewById<TextView>(R.id.fatherPhone).text =LoginUserDataHolder.loginUserData?.get("fatherphone")
-            }
-            logoutButton=activity.findViewById<com.google.android.material.button.MaterialButton>(R.id.logoutButton)
-            logoutButton?.setOnClickListener {
-                val bottomSheetDialog = com.google.android.material.bottomsheet.BottomSheetDialog(activity)
-                val sheetView = activity.layoutInflater.inflate(R.layout.dialog_logout_bottom_sheet, null)
-                bottomSheetDialog.setContentView(sheetView)
-
-                val btnThisDevice = sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnThisDevice)
-                val btnAllDevices = sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnAllDevices)
-                val btnCancel = sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnCancel)
-
-                btnThisDevice.setOnClickListener {
-                    bottomSheetDialog.dismiss()
-                    com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
-                        .setTitle("Confirm Logout")
-                        .setMessage("Are you sure you want to logout from this device?")
-                        .setPositiveButton("Yes, Logout") { _, _ ->
-                            logout(activity, "thisUser")
-                        }
-                        .setNegativeButton("Cancel", null)
-                        .show()
-                }
-
-                btnAllDevices.setOnClickListener {
-                    bottomSheetDialog.dismiss()
-                    com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
-                        .setTitle("Confirm Logout")
-                        .setMessage("Are you sure you want to logout from ALL devices? You will be signed out everywhere.")
-                        .setPositiveButton("Yes, Logout All") { _, _ ->
-                            logout(activity, "allUser")
-                        }
-                        .setNegativeButton("Cancel", null)
-                        .show()
-                }
-
-                btnCancel.setOnClickListener {
-                    bottomSheetDialog.dismiss()
-                }
-
-                bottomSheetDialog.show()
-            }
         }
 
     }
 
-     fun uploadImage(context:Activity,uri: Uri) {
+     fun uploadImage(context:Activity,uri: Uri, onSuccess: (() -> Unit)? = null) {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -222,7 +158,7 @@ object CommonOperation {
                     }
                     return@launch
                 }
-                context.findViewById<ImageView>(R.id.editProfilePictureLogo).isEnabled=false
+
                 launch(Dispatchers.Main) {
                     Toast.makeText(context,"Uploading...",Toast.LENGTH_LONG).show()
                 }
@@ -242,7 +178,7 @@ object CommonOperation {
                         response: Response<ResponseBody?>
                     ) {
 
-                        context.findViewById<ImageView>(R.id.editProfilePictureLogo).isEnabled=true
+
                         if (response.isSuccessful) {
                             Toast.makeText(
                                 context,
@@ -250,21 +186,24 @@ object CommonOperation {
                                 Toast.LENGTH_SHORT
                             ).show()
 
-                                //now update the profileImage and navProfileImage
-                                Glide.with(context).load(uri)
-                                    .into(context.findViewById(R.id.ProfileImage))
-                                Glide.with(context).load(uri).into(context.findViewById(R.id.navProfileImage))
+                                //now update the profileImage
+                                val imageView = context.findViewById<ImageView>(R.id.ProfileImage)
+                                if (imageView != null) {
+                                    Glide.with(context).load(uri).into(imageView)
+                                }
                                 loginUserData?.put("img","profile_images/${loginUserData?.get("email")}")
 
                             //put this img in shared preference
                             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putString("ud_img","profile_images/${loginUserData?.get("email")}").apply()
+                            
+                            onSuccess?.invoke()
 
                         } else {
                             val errorMessage = LoginUserDataHolder.getErrorMessage(response)
                             Toast.makeText(context, errorMessage, Toast.LENGTH_LONG)
                                 .show()
 
-                            context.findViewById<ImageView>(R.id.editProfilePictureLogo).isEnabled=true
+
                         }
                     }
 

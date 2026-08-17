@@ -7,22 +7,56 @@ plugins {
 
 android {
     namespace = "com.example.digitalpass"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.sistec.digitalpass"
         minSdk = 26
-        targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.2"
+        targetSdk = 35
+        versionCode = 4
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         multiDexEnabled = true
+
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
+        }
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
+        }
+        create("release") {
+            storeFile = file("release-keystore.jks")
+            storePassword = "sistec123"
+            keyAlias = "digitalpass"
+            keyPassword = "sistec123"
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -30,19 +64,24 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
+    buildFeatures {
+        compose = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.15"
+    }
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     packaging {
-        jniLibs {
-            // Required for 16 KB memory page size support (Android 15+).
-            // Stores native .so libraries uncompressed and page-aligned in the APK/AAB.
-            // Without this, devices with 16 KB pages may fail to install or crash.
-            useLegacyPackaging = false
-        }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "META-INF/DEPENDENCIES"
@@ -62,6 +101,20 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.cardview)
+
+    // Jetpack Compose Dependencies
+    val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
+    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material")
+    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.compose.runtime:runtime-livedata")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    implementation("io.coil-kt:coil-compose:2.6.0")
     implementation(libs.firebase.inappmessaging.display)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
@@ -107,4 +160,7 @@ dependencies {
     
     // Image Cropper
     implementation("com.vanniktech:android-image-cropper:4.5.0")
+    
+    // SQLite with JSON1 extension for older Android versions
+    implementation("com.github.requery:sqlite-android:3.45.0")
 }

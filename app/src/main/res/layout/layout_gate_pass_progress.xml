@@ -3,24 +3,40 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="24dp"
+    android:layout_marginBottom="16dp"
     app:cardBackgroundColor="#FFFFFF"
     app:cardCornerRadius="20dp"
-    app:cardElevation="6dp"
-    app:strokeColor="#F3F4F6"
+    app:cardElevation="0dp"
+    app:strokeColor="#EDF2F7"
     app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="18dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pass Lifecycle"
+            android:textColor="#1C1F2E"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Live status &amp; approval progress"
+            android:textColor="#64748B"
+            android:textSize="12sp" />
 
         <com.example.digitalpass.PremiumProgressIndicator
             android:id="@+id/premiumProgressIndicator"
             android:layout_width="match_parent"
             android:layout_height="100dp"
-            android:layout_marginTop="16dp" />
+            android:layout_marginTop="12dp" />
 
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

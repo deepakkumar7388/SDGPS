@@ -3,18 +3,12 @@ package com.example.digitalpass
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
+import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import androidx.compose.runtime.*
 import androidx.credentials.CredentialManager
 import androidx.credentials.CreatePasswordRequest
 import androidx.credentials.GetCredentialRequest
@@ -22,10 +16,11 @@ import androidx.credentials.GetPasswordOption
 import androidx.credentials.PasswordCredential
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import com.example.digitalpass.ui.LoginScreen
 import kotlinx.coroutines.launch
-import android.util.Log
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.security.MessageDigest
 
 class MainActivity : AppCompatActivity() {
@@ -36,387 +31,108 @@ class MainActivity : AppCompatActivity() {
         super.attachBaseContext(newBase.createConfigurationContext(newConfig))
     }
 
-    lateinit var progressBar: CustomProgressBar
+    private val isLoadingState = mutableStateOf(false)
+    private val emailState = mutableStateOf("")
+    private val passwordState = mutableStateOf("")
+
     private var fetchedUsername: String? = null
     private var fetchedPassword: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
-            val bottomPadding = if (imeInsets.bottom > 0) imeInsets.bottom else systemBars.bottom
+        retrieveSavedCredentials()
 
-            v.setPadding(
-                systemBars.left,
-                systemBars.top,
-                systemBars.right,
-                bottomPadding
+        setContent {
+            val isLoading by isLoadingState
+            val email by emailState
+            val password by passwordState
+
+            LoginScreen(
+                initialEmail = email,
+                initialPassword = password,
+                isLoading = isLoading,
+                onLoginClick = { emailInput, passInput ->
+                    performLogin(emailInput, passInput)
+                },
+                onForgotPasswordClick = {
+                    startActivity(Intent(this@MainActivity, ForgetPassword::class.java))
+                }
             )
-            insets
+        }
+    }
+
+    private fun performLogin(emailSt: String, passwordSt: String) {
+        if (emailSt.trim().isEmpty() || passwordSt.trim().isEmpty()) {
+            Toast.makeText(this, "Invalid Email or Password", Toast.LENGTH_SHORT).show()
+            return
         }
 
-        progressBar = findViewById(R.id.customProgressBar)
+        isLoadingState.value = true
         val sharedPreferences = getSharedPreferences("DigitalPassPrefs", Context.MODE_PRIVATE)
+        val loginData = LoginData(emailSt.trim(), passwordSt.trim())
+        val call = RetrofitClient.instance.loginUser(loginData)
 
-        val loginButton = findViewById<Button>(R.id.loginButton)
-        val email = findViewById<EditText>(R.id.loginEmail)
-        val password = findViewById<EditText>(R.id.loginPassword)
-        val forgetPassButton = findViewById<TextView>(R.id.forgetPassword)
-        
-        retrieveSavedCredentials(email, password)
+        call.enqueue(object : Callback<HashMap<String, String>> {
+            override fun onResponse(
+                call: Call<HashMap<String, String>>,
+                response: Response<HashMap<String, String>>
+            ) {
+                isLoadingState.value = false
+                if (response.isSuccessful) {
+                    val responseBody = response.body()
+                    if (responseBody != null) {
+                        val receivedToken = responseBody["token"]
+                        responseBody.remove("token")
+                        LoginUserDataHolder.loginUserData = responseBody
 
-        forgetPassButton.setOnClickListener {
-            startActivity(Intent(this, ForgetPassword::class.java))
-        }
+                        val editor = sharedPreferences.edit()
+                        editor.putString("token", receivedToken)
+                        editor.apply()
 
-        loginButton.setOnClickListener {
+                        if (receivedToken != null) {
+                            LoginUserDataHolder.token = receivedToken
+                            LoginUserDataHolder.saveState(this@MainActivity)
+                            LoginUserDataHolder.storeFCMToken()
+                            createNotificationChannel()
 
-            val emailSt = email.text.toString()
-            val passwordSt = password.text.toString()
+                            val currentHash = hashString(passwordSt)
+                            val savedHashKey = "cred_hash_$emailSt"
+                            val savedHash = sharedPreferences.getString(savedHashKey, null)
 
-            if (emailSt.trim() == "" || passwordSt.trim() == "") {
-                Toast.makeText(this, "Invalid Email or Password", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+                            if ((emailSt == fetchedUsername && passwordSt == fetchedPassword) || currentHash == savedHash) {
+                                getPermission()
+                            } else {
+                                val credentialManager = CredentialManager.create(this@MainActivity)
+                                val passwordRequest = CreatePasswordRequest(emailSt, passwordSt)
 
-            progressBar.startProgressBar()
-            loginButton.isEnabled = false
-            val loginData = LoginData(emailSt, passwordSt)
-            val call = RetrofitClient.instance.loginUser(loginData)
-            call.enqueue(object : Callback<HashMap<String, String>> {
-                override fun onResponse(
-                    call: Call<HashMap<String, String>>,
-                    response: Response<HashMap<String, String>>
-                ) {
-                    if (response.isSuccessful) {
-                        val responseBody = response.body()
-                        if (responseBody != null) {
-                            val receivedToken = responseBody["token"]
-                            responseBody.remove("token")
-                            LoginUserDataHolder.loginUserData = responseBody
-
-                            val editor = sharedPreferences.edit()
-                            editor.putString("token", receivedToken)
-                            editor.apply()
-                            
-                            if (receivedToken != null) {
-                                LoginUserDataHolder.token = receivedToken
-                                // Persist full user state so it survives process death
-                                LoginUserDataHolder.saveState(this@MainActivity)
-                                LoginUserDataHolder.storeFCMToken()
-                                createNotificationChannel()
-                                
-                                val currentHash = hashString(passwordSt)
-                                val savedHashKey = "cred_hash_$emailSt"
-                                val savedHash = sharedPreferences.getString(savedHashKey, null)
-
-                                if ((emailSt == fetchedUsername && passwordSt == fetchedPassword) || currentHash == savedHash) {
-                                    // Password already saved in autofill or previously prompted and hashed! Skip popup entirely.
-                                    getPermission()
-                                } else {
-                                    val credentialManager = CredentialManager.create(this@MainActivity)
-                                    val passwordRequest = CreatePasswordRequest(emailSt, passwordSt)
-                                    
-                                    lifecycleScope.launch {
-                                        try {
-                                            credentialManager.createCredential(this@MainActivity, passwordRequest)
-                                            // Save the hash locally so we don't prompt again for this exact password
-                                            sharedPreferences.edit().putString(savedHashKey, currentHash).apply()
-                                        } catch (e: Exception) {
-                                            Log.e("MainActivity", "Failed to save credential", e)
-                                        } finally {
-                                            // Always navigate — even if CredentialManager fails on older/non-Play-Services devices
-                                            getPermission()
-                                        }
+                                lifecycleScope.launch {
+                                    try {
+                                        credentialManager.createCredential(this@MainActivity, passwordRequest)
+                                        sharedPreferences.edit().putString(savedHashKey, currentHash).apply()
+                                    } catch (e: Exception) {
+                                        Log.e("MainActivity", "Failed to save credential", e)
+                                    } finally {
+                                        getPermission()
                                     }
                                 }
                             }
                         }
-                    } else {
-                        Toast.makeText(this@MainActivity, "Login Failed", Toast.LENGTH_SHORT).show()
                     }
-                    progressBar.stopAnimation()
-                    loginButton.isEnabled = true
-                }
-
-                override fun onFailure(call: Call<HashMap<String, String>>, t: Throwable) {
-                    progressBar.stopAnimation()
-                    loginButton.isEnabled = true
-                    Toast.makeText(this@MainActivity, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
-                }
-            })
-        }
-    }
-
-    private fun triggerSecureGatewayAnimation(role: String?) {
-        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-        imm.hideSoftInputFromWindow(currentFocus?.windowToken, 0)
-        //set the enable false for email,password,forget password and login
-        findViewById<EditText>(R.id.loginEmail).isEnabled = false
-        findViewById<EditText>(R.id.loginPassword).isEnabled = false
-        findViewById<TextView>(R.id.forgetPassword).isEnabled = false
-        findViewById<Button>(R.id.loginButton).isEnabled = false
-
-        val gatewayOverlay = findViewById<View>(R.id.gatewayOverlay)
-        val leftGate = findViewById<View>(R.id.leftGate)
-        val rightGate = findViewById<View>(R.id.rightGate)
-        val scannerBeam = findViewById<View>(R.id.scannerBeam)
-        val gatewayStatus = findViewById<TextView>(R.id.gatewayStatus)
-        val accessGrantedText = findViewById<TextView>(R.id.accessGrantedText)
-        val scrollView = findViewById<View>(R.id.scrollView2)
-
-        val leftEmblemText = findViewById<TextView>(R.id.leftEmblemText)
-        val rightEmblemText = findViewById<TextView>(R.id.rightEmblemText)
-        val leftEmblemPlate = findViewById<View>(R.id.leftEmblemPlate)
-        val rightEmblemPlate = findViewById<View>(R.id.rightEmblemPlate)
-
-        // Reset positions, scales, and opacities
-        leftGate.translationX = 0f
-        rightGate.translationX = 0f
-        leftGate.scaleX = 0.85f
-        leftGate.scaleY = 0.85f
-        leftGate.alpha = 0f
-        leftGate.rotationY = 0f
-        
-        rightGate.scaleX = 0.85f
-        rightGate.scaleY = 0.85f
-        rightGate.alpha = 0f
-        rightGate.rotationY = 0f
-
-        leftEmblemText.alpha = 0.1f
-        rightEmblemText.alpha = 0.1f
-        leftEmblemPlate.alpha = 0.1f
-        rightEmblemPlate.alpha = 0.1f
-
-        leftEmblemText.scaleX = 0.8f
-        leftEmblemText.scaleY = 0.8f
-        rightEmblemText.scaleX = 0.8f
-        rightEmblemText.scaleY = 0.8f
-
-        scannerBeam.translationY = 0f
-        scannerBeam.visibility = View.INVISIBLE
-        accessGrantedText.visibility = View.GONE
-        gatewayStatus.text = "Establishing secure connection..."
-        gatewayStatus.setTextColor(android.graphics.Color.parseColor("#8F9CAE"))
-
-        gatewayOverlay.visibility = View.VISIBLE
-        gatewayOverlay.alpha = 0f
-
-        // Start drifting ambient background particles
-        startFloatingParticles()
-
-        // Step 1: Fade-in overlay, zoom-in the gate doors, and shrink the login form behind
-        gatewayOverlay.animate().alpha(1f).setDuration(400).start()
-        scrollView.animate().alpha(0f).scaleX(0.85f).scaleY(0.85f).setDuration(400).start()
-
-        leftGate.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(600).start()
-        rightGate.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(600).withEndAction {
-            
-            // Step 2: Start scanning animation from above the screen to the bottom
-            scannerBeam.visibility = View.VISIBLE
-            val displayMetrics = resources.displayMetrics
-            val screenHeight = displayMetrics.heightPixels.toFloat()
-
-            val beamAnim = android.animation.ObjectAnimator.ofFloat(
-                scannerBeam,
-                "translationY",
-                -dpToPx(),
-                screenHeight
-            )
-            beamAnim.duration = 2000
-            beamAnim.interpolator = android.view.animation.AccelerateDecelerateInterpolator()
-            
-            // Update scanning stages and emblem light-up
-            beamAnim.addUpdateListener { animator ->
-                val fraction = animator.animatedFraction
-                
-                // Detailed progress message sub-states
-                when {
-                    fraction < 0.25f -> {
-                        gatewayStatus.text = "Establishing secure gateway..."
-                    }
-                    fraction >= 0.25f && fraction < 0.5f -> {
-                        gatewayStatus.text = "Scanning credentials..."
-                    }
-                    fraction >= 0.5f && fraction < 0.75f -> {
-                        gatewayStatus.text = "Decrypting signature..."
-                        gatewayStatus.setTextColor(android.graphics.Color.parseColor("#00F2FE"))
-                    }
-                    fraction >= 0.75f -> {
-                        gatewayStatus.text = "Identity Verified"
-                        gatewayStatus.setTextColor(android.graphics.Color.parseColor("#2AF598"))
-                    }
-                }
-
-                // Smoothly illuminate the emblem plate/text as scanner sweeps through the middle 30% to 70%
-                if (fraction in 0.3f..0.7f) {
-                    val progress = (fraction - 0.3f) / 0.4f
-                    val currentAlpha = 0.1f + progress * 0.9f
-                    val currentScale = 0.8f + progress * 0.2f
-                    
-                    leftEmblemText.alpha = currentAlpha
-                    rightEmblemText.alpha = currentAlpha
-                    leftEmblemPlate.alpha = currentAlpha
-                    rightEmblemPlate.alpha = currentAlpha
-                    
-                    leftEmblemText.scaleX = currentScale
-                    leftEmblemText.scaleY = currentScale
-                    rightEmblemText.scaleX = currentScale
-                    rightEmblemText.scaleY = currentScale
-                } else if (fraction > 0.7f) {
-                    leftEmblemText.alpha = 1.0f
-                    rightEmblemText.alpha = 1.0f
-                    leftEmblemPlate.alpha = 1.0f
-                    rightEmblemPlate.alpha = 1.0f
-                    leftEmblemText.scaleX = 1.0f
-                    leftEmblemText.scaleY = 1.0f
-                    rightEmblemText.scaleX = 1.0f
-                    rightEmblemText.scaleY = 1.0f
+                } else {
+                    Toast.makeText(this@MainActivity, "Login Failed: Invalid credentials", Toast.LENGTH_SHORT).show()
                 }
             }
 
-            beamAnim.addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) {
-                    super.onAnimationEnd(animation)
-                    scannerBeam.visibility = View.INVISIBLE
-
-                    // Step 3: Access Granted climax
-                    accessGrantedText.visibility = View.VISIBLE
-                    accessGrantedText.alpha = 0f
-                    accessGrantedText.scaleX = 0.3f
-                    accessGrantedText.scaleY = 0.3f
-
-                    // Quick light pulse on D | P emblem
-                    leftEmblemText.animate().scaleX(1.15f).scaleY(1.15f).setDuration(200).withEndAction {
-                        leftEmblemText.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
-                    }.start()
-                    rightEmblemText.animate().scaleX(1.15f).scaleY(1.15f).setDuration(200).withEndAction {
-                        rightEmblemText.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
-                    }.start()
-
-                    // Reveal ACCESS GRANTED text with an overshoot spring bounce
-                    accessGrantedText.animate()
-                        .alpha(1f)
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(450)
-                        .setInterpolator(android.view.animation.OvershootInterpolator(2.2f))
-                        .withEndAction {
-                            
-                            // Setup a repeating professional pulse scale glow loop
-                            val pulseAnim = android.animation.ObjectAnimator.ofPropertyValuesHolder(
-                                accessGrantedText,
-                                android.animation.PropertyValuesHolder.ofFloat("scaleX", 1.0f, 1.06f, 1.0f),
-                                android.animation.PropertyValuesHolder.ofFloat("scaleY", 1.0f, 1.06f, 1.0f)
-                            )
-                            pulseAnim.duration = 750
-                            pulseAnim.repeatCount = android.animation.ValueAnimator.INFINITE
-                            pulseAnim.repeatMode = android.animation.ValueAnimator.REVERSE
-                            pulseAnim.interpolator = android.view.animation.AccelerateDecelerateInterpolator()
-                            pulseAnim.start()
-
-                            // After showing Access Granted for 1.2 seconds, swing the gates open and proceed
-                            gatewayStatus.postDelayed({
-                                pulseAnim.cancel()
-
-                                // Step 4: 3D Swing Open Gate Transition (Hinge Rotation & Translation)
-                                val screenWidth = displayMetrics.widthPixels.toFloat()
-                                val leftTarget = -screenWidth / 2f
-                                val rightTarget = screenWidth / 2f
-
-                                // Set hinges (pivots) on left and right outer screen edges
-                                leftGate.pivotX = 0f
-                                leftGate.pivotY = leftGate.height.toFloat() / 2f
-                                rightGate.pivotX = rightGate.width.toFloat()
-                                rightGate.pivotY = rightGate.height.toFloat() / 2f
-
-                                // Animate left gate (glide and swing backward)
-                                leftGate.animate()
-                                    .translationX(leftTarget)
-                                    .rotationY(-75f)
-                                    .alpha(0f)
-                                    .setDuration(1000)
-                                    .setInterpolator(android.view.animation.AnticipateOvershootInterpolator(1.0f))
-                                    .start()
-
-                                // Animate right gate (glide and swing backward)
-                                rightGate.animate()
-                                    .translationX(rightTarget)
-                                    .rotationY(75f)
-                                    .alpha(0f)
-                                    .setDuration(1000)
-                                    .setInterpolator(android.view.animation.AnticipateOvershootInterpolator(1.0f))
-                                    .start()
-
-                                accessGrantedText.animate()
-                                    .alpha(0f)
-                                    .scaleX(0.85f)
-                                    .scaleY(0.85f)
-                                    .setDuration(500)
-                                    .start()
-
-                                gatewayStatus.animate()
-                                    .alpha(0f)
-                                    .setDuration(500)
-                                    .start()
-
-                                // Cross-fade background overlay completely
-                                gatewayOverlay.animate()
-                                    .alpha(0f)
-                                    .setDuration(1000)
-                                    .withEndAction {
-                                        actualNavigateToDashboard(role)
-                                    }
-                                    .start()
-                            }, 1200)
-                        }
-                        .start()
-                }
-            })
-            beamAnim.start()
-        }.start()
-    }
-
-    private fun startFloatingParticles() {
-        val p1 = findViewById<View>(R.id.particle1)
-        val p2 = findViewById<View>(R.id.particle2)
-        val p3 = findViewById<View>(R.id.particle3)
-        val p4 = findViewById<View>(R.id.particle4)
-        val p5 = findViewById<View>(R.id.particle5)
-
-        animateParticle(p1, -30f, 30f, -40f, 40f, 3200)
-        animateParticle(p2, -50f, 50f, -50f, 50f, 4500)
-        animateParticle(p3, -25f, 25f, -30f, 30f, 3800)
-        animateParticle(p4, -40f, 40f, -40f, 40f, 4100)
-        animateParticle(p5, -20f, 20f, -50f, 50f, 3500)
-    }
-
-    private fun animateParticle(view: View, minX: Float, maxX: Float, minY: Float, maxY: Float, durationMs: Long) {
-        val xAnim = android.animation.ObjectAnimator.ofFloat(view, "translationX", minX, maxX)
-        xAnim.duration = durationMs
-        xAnim.repeatCount = android.animation.ValueAnimator.INFINITE
-        xAnim.repeatMode = android.animation.ValueAnimator.REVERSE
-        xAnim.interpolator = android.view.animation.AccelerateDecelerateInterpolator()
-        xAnim.start()
-
-        val yAnim = android.animation.ObjectAnimator.ofFloat(view, "translationY", minY, maxY)
-        yAnim.duration = durationMs + 400
-        yAnim.repeatCount = android.animation.ValueAnimator.INFINITE
-        yAnim.repeatMode = android.animation.ValueAnimator.REVERSE
-        yAnim.interpolator = android.view.animation.AccelerateDecelerateInterpolator()
-        yAnim.start()
-    }
-
-    private fun dpToPx(): Float {
-        return 40f * resources.displayMetrics.density
+            override fun onFailure(call: Call<HashMap<String, String>>, t: Throwable) {
+                isLoadingState.value = false
+                Toast.makeText(this@MainActivity, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 
     private fun actualNavigateToDashboard(role: String?) {
-        // Guard: if role is missing we cannot navigate anywhere — send back to login
         if (role.isNullOrBlank()) {
             LoginUserDataHolder.token = ""
             startActivity(Intent(this, MainActivity::class.java))
@@ -447,8 +163,6 @@ class MainActivity : AppCompatActivity() {
         intent?.let {
             startActivity(it)
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
-            // Connect AFTER startActivity so the destination activity initialises its
-            // views before any socket events can arrive (avoids NPE on slow/old devices).
             if (role.lowercase() != "student") SocketManager.connect()
             finish()
         }
@@ -459,7 +173,7 @@ class MainActivity : AppCompatActivity() {
         if (checkSelfPermission(android.Manifest.permission.CALL_PHONE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             permissionArray.add(android.Manifest.permission.CALL_PHONE)
         }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU && 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             permissionArray.add(android.Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -467,7 +181,7 @@ class MainActivity : AppCompatActivity() {
         if (permissionArray.isNotEmpty()) {
             requestPermissions(permissionArray.toTypedArray(), 1)
         } else {
-            triggerSecureGatewayAnimation(LoginUserDataHolder.loginUserData?.get("role"))
+            actualNavigateToDashboard(LoginUserDataHolder.loginUserData?.get("role"))
         }
     }
 
@@ -478,7 +192,7 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 1) {
-            triggerSecureGatewayAnimation(LoginUserDataHolder.loginUserData?.get("role"))
+            actualNavigateToDashboard(LoginUserDataHolder.loginUserData?.get("role"))
         }
     }
 
@@ -490,7 +204,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun retrieveSavedCredentials(emailField: EditText, passwordField: EditText) {
+    private fun retrieveSavedCredentials() {
         val credentialManager = CredentialManager.create(this)
         val getPasswordOption = GetPasswordOption()
         val getCredRequest = GetCredentialRequest(listOf(getPasswordOption))
@@ -507,11 +221,9 @@ class MainActivity : AppCompatActivity() {
                     val userPassword = credential.password
                     fetchedUsername = username
                     fetchedPassword = userPassword
-                    emailField.setText(username)
-                    passwordField.setText(userPassword)
-                    
-                    // Trigger login button click
-                    findViewById<Button>(R.id.loginButton).performClick()
+                    emailState.value = username
+                    passwordState.value = userPassword
+                    performLogin(username, userPassword)
                 }
             } catch (e: GetCredentialException) {
                 Log.d("MainActivity", "No credentials or user cancelled: ${e.message}")

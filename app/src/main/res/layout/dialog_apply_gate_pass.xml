@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="4dp"
+    android:layout_margin="16dp"
+    app:cardBackgroundColor="@android:color/white">
+
+<LinearLayout 
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -60,7 +68,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Reason for Gate Pass *"
-        android:textColor="#3B82F6"
+        android:textColor="#0D47A1"
         android:textStyle="bold"
         android:textSize="14sp"
         android:layout_marginBottom="8dp"/>
@@ -178,8 +186,10 @@
         android:layout_height="wrap_content"
         android:text="Apply"
         app:cornerRadius="10dp"
+        app:backgroundTint="#0D47A1"
         android:paddingTop="12dp"
         android:paddingBottom="12dp"
         android:enabled="false"/>
 
 </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

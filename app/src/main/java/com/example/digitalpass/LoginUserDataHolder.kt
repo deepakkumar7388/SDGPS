@@ -50,7 +50,7 @@ object LoginUserDataHolder {
     // All loginUserData keys we want to persist:
     private val USER_DATA_KEYS = listOf(
         "name", "email", "phone", "role", "campus", "department",
-        "batch", "img", "uid", "fathername", "fatherphone", "versionId"
+        "batch", "img", "uid", "fatherName", "fatherPhone", "versionId"
     )
 
 
